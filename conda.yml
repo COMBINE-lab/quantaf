@@ -1,0 +1,12 @@
+
+name: tenx-jnf
+channels:
+  - bioconda
+  - defaults
+  - conda-forge
+dependencies:
+  # Default bismark
+  - salmon
+  - alevin-fry
+  - pyroe
+  - bedtools
