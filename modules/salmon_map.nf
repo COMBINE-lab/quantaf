@@ -14,7 +14,6 @@ workflow salmon_map {
         salmon_map_rad.out.map_dir
         salmon_map_rad.out.map_rad
         salmon_map_rad.out.unmapped_file
-
 }
 
 /*
@@ -26,7 +25,7 @@ workflow salmon_map {
 process salmon_map_rad {
     tag "salmon_map:${MD5}"
 
-    cpus params.n_threads
+    label 'multi_threads'
 
     conda "bioconda::salmon"
 
@@ -57,10 +56,18 @@ process salmon_map_rad {
         chemistry = salmon_chem_flag(chem)
 
         """
-            mkdir -p ${MD5}_fastqs && wget -qO- ${fastq_link} | tar xf - --strip-components=1 -C ${MD5}_fastqs
+            wget ${fastq_link} -P ${MD5}_cfastqs
+            while [ "\$(md5sum ${MD5}_cfastqs/\$(ls ${MD5}_cfastqs) | cut -d' ' -f1)" != "${MD5}" ]
+            do
+                rm -rf ${MD5}_cfastqs
+                wget ${fastq_link} -P ${MD5}_cfastqs
+            done
+            mkdir -p ${MD5}_fastqs
+            tar xf ${MD5}_cfastqs/\$(ls ${MD5}_cfastqs) --strip-components=1 -C ${MD5}_fastqs
+            rm -rf ${MD5}_cfastqs
 
-            reads1="\$(ls ${MD5}_fastqs | sort | awk -v p=${MD5}_fastqs '{print p"/"\$0}' | grep "_R1_")"
-            reads2="\$(ls ${MD5}_fastqs | sort | awk -v p=${MD5}_fastqs '{print p"/"\$0}' | grep "_R2_")"
+            reads1="\$(find ${MD5}_fastqs -name "*_R1_*" -type f | xargs | sort | awk '{print " "\$0}')"
+            reads2="\$(find ${MD5}_fastqs -name "*_R2_*" -type f | xargs | sort | awk '{print " "\$0}')"
 
             /usr/bin/time -v -o ${MD5}_log_map_sketch.time \
             salmon alevin -i ${index} -l ISR \
@@ -71,7 +78,7 @@ process salmon_map_rad {
             --sketch -o \
             ${MD5}_alevin_map 
 
-            if [ -f "/usr/bin/wine" ]; then rm -rf ${MD5}_fastqs; fi
+            if [ ${delete_fastq != 0} ]; then rm -rf ${MD5}_fastqs; fi
         """
 
     stub:

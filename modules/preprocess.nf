@@ -5,6 +5,8 @@
 * NOTE: require a tsv named pl_sheet.tsv in the ${bench_dir}/input_files
 */
 process get_permitlist {
+    tag "get_permitlist:${chemistry}"
+
     input:
         tuple val(chemistry), path(link)
     
@@ -41,7 +43,9 @@ process get_permitlist {
 *    enable cellranger to make reference 
 */
 process get_splici {
-    conda "bioconda::pyroe bioconda::bedtools"
+    tag "get_permitlist:${reference}"
+    conda "bioconda::bedtools bioconda::pyroe"
+
     input:
         tuple val(reference), val(link)
         
@@ -82,7 +86,7 @@ process salmon_index {
 
     conda "bioconda::salmon"
 
-    cpus params.n_threads
+    label 'multi_threads'
 
     input:
         tuple val(reference), path(splici), path(t2g)
@@ -92,27 +96,31 @@ process salmon_index {
 
     script:
 
-        """
+        cmd = """
             $params.timecmd -v -o ${reference}_index.time salmon index \
             -t $splici \
             -i ${reference}_index \
             -p ${task.cpus} 
         """
 
-    stub:
         """
+        ${cmd}
+        """
+
+    stub:
+        cmd = """
+            $params.timecmd -v -o ${reference}_index.time salmon index \
+            -t $splici \
+            -i ${reference}_index \
+            -p ${task.cpus} 
+        """
+
+        """
+            echo "executing :: ${cmd}"
             mkdir -p ${reference}_index
             touch ${reference}_index/a_file
         """
 }
-
-
-// splici = splici.flatMap { ["${it[0]}" : it[1]] }
-
-
-// permitlist.view()
-// splici.view {it.key+": "+it.value}
-
 
 /*
 * This workflow take a ref_sheet.tsv and a pl_sheet.tsv file 
@@ -125,7 +133,7 @@ process salmon_index {
 workflow preprocess {
     pl_sheet = Channel
             .fromPath(params.input_sheets.permitlist)
-            .splitCsv(header:true, sep:"\t")
+            .splitCsv(header:true, sep:"\t", strip: true)
             .map{ row-> tuple(row.reference,
                             row.link)
             }
@@ -133,32 +141,15 @@ workflow preprocess {
 
     ref_sheet = Channel
                 .fromPath(params.input_sheets.reference)
-                .splitCsv(header:true, sep:"\t")
+                .splitCsv(header:true, sep:"\t", strip: true)
                 .map{ row-> tuple(row.reference,
                                 row.link)
                 }
     get_splici(ref_sheet)
     salmon_index(get_splici.out)
     
-    // salmon_index.out[2].view()
-
-    // permitlist = get_permitlist.out.permitlist.map { ["reference" : it[0],  "path": it[1]] }
-    // t2g = get_splici.out.splici.map { ["reference" : it[0],  "path": it[2]] }
-    // index = salmon_index.out.index.map { ["reference" : it[0],  "index": it[1], "t2g": it[2]] }
-    
-
-    // permitlist = get_permitlist.out.permitlist.flatMap { ["${it[0]}" : it[1]] }
-    // t2g = get_splici.out.splici.flatMap { ["${it[0]}" : it[2]] }
-    // index = salmon_index.out.index.flatMap { ["${it[0]}" : it[1]] }
-
     chem_pl = get_permitlist.out.chem_pl
-    // t2g = get_splici.out.splici
     ref_t2g_index = salmon_index.out.ref_t2g_index
-    
-
-    // ref_pl_t2g_idx = get_permitlist.out.permitlist
-    //                 .join(salmon_index.out.index)
-
 
     emit:
         chem_pl
