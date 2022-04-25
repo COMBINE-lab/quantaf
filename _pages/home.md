@@ -61,3 +61,7 @@ In this section, we list the datasets we have re-processed from the [10x website
 | 34 | [1k Brain Cells from an E18 Mouse (v2 chemistry)](https://www.10xgenomics.com/resources/datasets/1-k-brain-cells-from-an-e-18-mouse-v-2-chemistry-3-standard-3-0-0): |[Box link](https://.box.com/shared/static/a53twm69uo2xf6778asuvw2aft7wkur5.tar)|
 | 35 | [1k Heart Cells from an E18 mouse (v2 chemistry)](https://www.10xgenomics.com/resources/datasets/1-k-heart-cells-from-an-e-18-mouse-v-2-chemistry-3-standard-3-0-0): |[Box link](https://.box.com/shared/static/p4ieuzimfgrjfsr9rzhrn48kved4ha7m.tar)|
 
+## R and Python interface
+
+To ease the process of downloding the quantificaiton result of these processed datasets easily and automatically from within a programatic environment, we provide a R interface, function `preprocessed_10x_data` in the `roe` R package.  The documentation for this `roe` function can be found [here](https://github.com/COMBINE-lab/roe/blob/961336fffa91d345b4c509b27e5adaa417005f32/R/preprocessed_10x_data.R#L1).  A corresponding function for Python within the `pyroe` package should be available shortly.
+
