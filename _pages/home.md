@@ -8,8 +8,7 @@ header:
   #actions:
   #  - label: "<i class='fas fa-download'></i> Install now"
   #    url: "/docs/quick-start-guide/"
-excerpt:
-  A collection of alevin-fry quantified single-cell and single-nucleus RNA-seq datsets 
+excerpt: A collection of alevin-fry quantified single-cell and single-nucleus RNA-seq datsets 
 ---
 
 ## Introduction
