@@ -76,7 +76,7 @@ The return type of both `fetch_processed_quant()` and `load_processed_quant()` i
 ```R
 library(roe)
 
-# fetch and decompress the quantification result of dataset #1 and #3
+# fetch and decompress the quantification result of dataset #1 and #3 and load them into R as SingleCellExperiment objects.
 # it returns a list of ProcessedQuant class objects, one for a fetched
 # dataset
 pq_list = load_processed_quant(c(1,3))
