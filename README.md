@@ -45,5 +45,10 @@ in this section, we list all the datasets we collected from [10x website](https:
 
 # R and python interface
 
-To ease the process of downloding the quantificaiton result of these processed datasets, we provide a R interface, function `preprocessed_10x_data` in the `roe` R package
+To ease the procedure of querying the quantificaiton result of these processed datasets, we provide function [`preprocessed_10x_data`](https://github.com/COMBINE-lab/roe/blob/main/R/preprocessed_10x_data.R) in the [`roe` R package](https://github.com/COMBINE-lab/roe) for R users, and the same function in the [pyroe](https://github.com/COMBINE-lab/pyroe) python package for python lovers. We also offer a thin wrapper of this function, called `load10x` in both `roe` and `pyroe`, which can directly load the downloaded datasets into R as `SingleCellExperiment` objects or into python as `AnnData` objects. Thanks to python's CLI, once `pyroe` is installed, one can directly download the datasets from command line by running for example
 
+```python
+query_datasets=(1 2 3)
+pyroe download-10x ${!query_datasets[@]} 10x_datasets
+
+```

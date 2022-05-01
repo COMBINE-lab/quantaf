@@ -140,7 +140,8 @@ process alevin_fry_quant {
 
         """
             ${cmd}
-            echo "${dataset_webpage}" > ${odir}/dataset_description.txt
+            echo ${dataset_name} > ${odir}/dataset_description.txt
+            echo "${dataset_webpage}" >> ${odir}/dataset_description.txt
             tar cf ${odir}.tar ${odir}
         """
 
@@ -153,7 +154,8 @@ process alevin_fry_quant {
             echo "executing :: ${cmd}"
             mkdir -p ${odir}
             touch ${odir}/dataset_description.txt
-            echo "${dataset_webpage}" > ${odir}/dataset_description.txt
+            echo ${dataset_name} > ${odir}/dataset_description.txt
+            echo "${dataset_webpage}" >> ${odir}/dataset_description.txt
             touch ${odir}/meta_info.json
             tar cf ${odir}.tar ${odir}
 
