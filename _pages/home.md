@@ -63,5 +63,90 @@ In this section, we list the datasets we have re-processed from the [10x website
 
 ## R and Python interface
 
-To ease the process of downloding the quantificaiton result of these processed datasets easily and automatically from within a programatic environment, we provide a R interface, function `preprocessed_10x_data` in the `roe` R package.  The documentation for this `roe` function can be found [here](https://github.com/COMBINE-lab/roe/blob/961336fffa91d345b4c509b27e5adaa417005f32/R/preprocessed_10x_data.R#L1).  A corresponding function for Python within the `pyroe` package should be available shortly.
+### R interface
 
+To ease the process of downloding the quantificaiton result of these processed datasets easily and automatically from within a programatic environment, we provide a couple of R interfaces in the `roe` R package. To install R package, please follow [this](https://github.com/COMBINE-lab/roe#installation).
+- `print_available_datasets()` prints out the id and name of the available datasets.
+- `get_available_dataset_df()` returns the details of the available datasets as a dataframe.
+- `fetch_processed_quant(dataset_ids)` takes a vector of dataset ids as the required input, and fetches the quantification result of these datasets according to their id to a local directory. Other optional parameters can be found at [here](https://github.com/COMBINE-lab/roe/blob/main/R/fetch_processed_quant.R#L1).
+- `load_processed_quant(dataset_ids)` also takes a vector of dataset ids as the required input, and loads the quantification result of these datasets into R as `SingleCellExperiment` objects after fetching them. Other optional parameters can be found at [here](https://github.com/COMBINE-lab/roe/blob/main/R/load_processed_quant.R#L1).
+
+The return type of both `fetch_processed_quant()` and `load_processed_quant()` is a list of [`ProcessedQuant` class](https://github.com/COMBINE-lab/roe/blob/main/R/ProcessedQuant.R) defined in the roe package. This class stores the details of a processed dataset, including the 10x chemistry, reference, dataset name, the MD5sum of the fastq.tar file, and the link to the preprocessed quantification result. It also contains the path to folder storing the fetched and decompressed quantification result, and the SingleCellExperiment object of the quantification if obtained by running `fetch_processed_quant()` and `load_processed_quant()`. Below we show an example
+
+```R
+library(roe)
+
+# fetch and decompress the quantification result of dataset #1 and #3
+pq_list = load_processed_quant(c(1,3))
+
+# get the ProcessedQuant object for dataset #1 and #3
+pq_ds1 = pq_list[["1"]]
+pq_ds3 = pq_list[["3"]]
+
+# get the name of datset #1 and #3
+pq_ds1@dataset_name
+
+# get the link to the site storing the quantification result
+pq_ds1@quant_link
+
+# get the path to the quantification result of datset #1 and #3
+pq_ds1@quant_link
+
+# get the SingleCellExperiment object
+pq_ds1@sce
+
+# Notice that in the return object of fetch_processed_quant() 
+# the sce slot is empty.
+```
+
+
+If one would like to finely control the paths for saving the fetched files and decompressed folders, one can refer to the definition of [`ProcessedQuant` class](https://github.com/COMBINE-lab/roe/blob/main/R/ProcessedQuant.R) and its functions. These functions are able to fetch (`fetch_quant()`), decompress (`decompress_quant()`) and/or load (`load_quant()`) the quntification result of a single dataset.
+
+
+
+### python interface
+
+We provide the same functions and classes described above for fetching and loading the quantification result of datasets in the [`pyroe` python package](https://github.com/COMBINE-lab/pyroe), which can be installed via `pip` using the command:
+
+```bash
+pip install pyroe
+
+```
+or via conda using the command:
+```bash
+conda install -c Bioconda pyroe
+
+```
+
+Thanks to the flexibility of python, we offers a CLI, `pyroe fetch-quant`, for fetching the quantification results of any number of available datasets. The only required input is the dataset id of some available datasets, which is included in the help message (run `pyroe fetch-quant -h`). One can provide multiple dataset ids, separated by space, to fetch the quantification result of multiple datasets at once, for example, to fetch and decompress the quantification result of dataset #1, #3 and #6, run the command:
+
+```bash
+pyroe fetch-quant 1 3 6
+```
+
+or start python, and run
+
+```py
+import pyroe
+
+# fetch, decompress and load the quantification result of dastset #1, 3 and 6
+pq_dict = pyroe.load_processed_quant([1,3,6])
+
+# get the ProcessedQuant class object for dataset #1 and #3
+pq_ds1 = pq_dict["1"]
+pq_ds3 = pq_dict["3"]
+
+# get the dataset name
+pq_ds1.dataset_name
+
+# get the link to the site storing the quantification result
+pq_ds1.quant_link
+
+
+# get the path to the quantification result
+pq_ds1.quant_path
+
+# get the AnnData
+pq_ds1.anndata
+
+```
