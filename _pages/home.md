@@ -13,11 +13,11 @@ excerpt: A collection of alevin-fry quantified single-cell and single-nucleus RN
 
 ## Introduction
 
-The raw data for many single-cell and single-nucleus RNA-seq experiments is publicly available.  However, certain datasets are used _again and again_, to demonstrate data processing in tutorials, as benchmark datasets for novel methods (e.g. for clustering, dimensionality reduction, cell type identification, etc.).  In particular, 10x Genomics hosts various publicly available datasets generated using their technology and processed via their Cell Ranger software [on their website for download](https://www.10xgenomics.com/resources/datasets).
+The raw data for many single-cell and single-nucleus RNA-seq experiments is publicly-available.  However, certain datasets are used _again and again_, to demonstrate data processing in tutorials, as benchmark datasets for novel methods (e.g. for clustering, dimensionality reduction, cell type identification, etc.).  In particular, 10x Genomics hosts various publicly-available datasets generated using their technology and processed via their Cell Ranger software [on their website for download](https://www.10xgenomics.com/resources/datasets).
 
-We have created a [Nextflow](https://www.nextflow.io)-based `alevin-fry` workflow that one can use to easily quantify single-cell RNA-sequencing data in a single workflow.  The pipeline can be found [here](https://github.com/COMBINE-lab/10x-requant).  To test out this initial pipeline, we have begun to reprocess the publicly-available datasets collected from the 10x website. We have focused the initial effort on standard single-cell and single-nucleus gene-expression data generated using the Chromium v2 and v3 chemistries, but hope to expand the pipeline to more complex protocols soon (e.g. feature barcoding experiments) and process those data as well.  We note that these more complex protocols can already be processed with `alevin-fry` (see the [alevin-fry tutorials](https://combine-lab.github.io/alevin-fry-tutorials/)), but these have just not yet been incorprated into the automated Nextflow-based workflow linked above.
+We have created a [Nextflow](https://www.nextflow.io)-based `alevin-fry` workflow that one can use to easily quantify single-cell RNA-sequencing data in a single workflow.  The pipeline can be found [here](https://github.com/COMBINE-lab/10x-requant).  To test out this initial pipeline, we have begun to reprocess the publicly-available datasets collected from the 10x website. We have focused the initial effort on standard single-cell and single-nucleus 3' gene-expression data generated using the Chromium v2 and v3 chemistries, but hope to expand the pipeline to more complex protocols soon (e.g. feature barcoding experiments) and process those data as well.  We note that **these more complex protocols can already be processed with `alevin-fry` (see the [alevin-fry tutorials](https://combine-lab.github.io/alevin-fry-tutorials/))**, but these have just not yet been incorprated into the automated Nextflow-based workflow linked above.
 
-Additionally, to make interacting with these data as simple as possible in standard R and Python environments, we have added functions to the [`roe`](https://github.com/combine-lab/roe) and [`pyroe`](https://github.com/combine-lab/pyroe) packages to easily and programatically download these data and make them available as a [SingleCellExperiment](https://bioconductor.org/packages/release/bioc/html/SingleCellExperiment.html) or [AnnData object](https://scanpy.readthedocs.io/en/latest/usage-principles.html#anndata) respectively.
+Additionally, to make interacting with these data as simple as possible in standard R and Python environments, we have added functions to the [`roe`](https://github.com/combine-lab/roe) and [`pyroe`](https://github.com/combine-lab/pyroe) packages to easily and programatically download these data and make them available as a [SingleCellExperiment](https://bioconductor.org/packages/release/bioc/html/SingleCellExperiment.html) or [AnnData object](https://scanpy.readthedocs.io/en/latest/usage-principles.html#anndata) respectively.  See details about the [R interface](https://combine-lab.github.io/10x-requant/#r-interface) and [Python interface](https://combine-lab.github.io/10x-requant/#python-interface) below.
 
 ### Processed datasets:
 
@@ -65,13 +65,14 @@ In this section, we list the datasets we have re-processed from the [10x website
 
 ### R interface
 
-To ease the process of downloding the quantificaiton result of these processed datasets easily and automatically from within a programatic environment, we provide a couple of R interfaces in the `roe` R package. To install `roe`, please follow [this](https://github.com/COMBINE-lab/roe#installation).
+To ease the process of downloding the quantificaiton result of these processed datasets easily and automatically from within a programatic environment, we provide an interface in the `roe` R package exposing several useful methods. To install `roe`, please follow [this](https://github.com/COMBINE-lab/roe#installation).
+
 - `print_available_datasets()` prints out the id and name of the available datasets.
 - `get_available_dataset_df()` returns the details of the available datasets as a dataframe.
-- `fetch_processed_quant(dataset_ids)` takes a vector of dataset ids as the required input, and fetches the quantification result of these datasets according to their id to a local directory. Other optional parameters can be found at [here](https://github.com/COMBINE-lab/roe/blob/main/R/fetch_processed_quant.R#L1).
+- `fetch_processed_quant(dataset_ids)` takes a vector of dataset ids as the required input, and fetches the quantification result of these datasets, according to their id, to a local directory. Other optional parameters can be found [here](https://github.com/COMBINE-lab/roe/blob/main/R/fetch_processed_quant.R#L1).
 - `load_processed_quant(dataset_ids)` also takes a vector of dataset ids as the required input, and loads the quantification result of these datasets into R as `SingleCellExperiment` objects after fetching them. Other optional parameters can be found at [here](https://github.com/COMBINE-lab/roe/blob/main/R/load_processed_quant.R#L1).
 
-The return type of both `fetch_processed_quant()` and `load_processed_quant()` is a list of [`ProcessedQuant` class](https://github.com/COMBINE-lab/roe/blob/main/R/ProcessedQuant.R) defined in the roe package. This class stores the details of a processed dataset, including the 10x chemistry, reference, dataset name, the MD5sum of the fastq.tar file, and the link to the preprocessed quantification result. It also contains the path to the fetched and decompressed quantification result, and the SingleCellExperiment object of the quantification if obtained by running `load_processed_quant(dataset_ids)`. Below we show an example
+The return type of both `fetch_processed_quant()` and `load_processed_quant()` is a list of [`ProcessedQuant` class instances](https://github.com/COMBINE-lab/roe/blob/main/R/ProcessedQuant.R) defined in the `roe` package. This class stores the details of a processed dataset, including the 10x chemistry, reference, dataset name, the MD5sum of the fastq.tar file, and the link to the preprocessed quantification result. It also contains the path to the fetched and decompressed quantification result, and the SingleCellExperiment object of the quantification if obtained by running `load_processed_quant(dataset_ids)`. Below we show an example:
 
 ```R
 library(roe)
@@ -102,20 +103,20 @@ pq_ds1@sce
 ```
 
 
-If one would like to finely control the paths for saving the fetched files and decompressed folders, one can refer to the definition of [`ProcessedQuant` class](https://github.com/COMBINE-lab/roe/blob/main/R/ProcessedQuant.R) and its functions. one can fetch, decompress and load the quntification result of a single dataset by running `ProcessedQuant()` `fetch_quant()`, `decompress_quant()` and then `load_quant()` in turn, or `FDL()`, which integrates the four functions into a single function.
+If one would like to fine control over the paths for saving the fetched files and decompressed folders, one can refer to the definition of the [`ProcessedQuant` class](https://github.com/COMBINE-lab/roe/blob/main/R/ProcessedQuant.R) and its functions. One can fetch, decompress and load the quntification result of a single dataset by running `ProcessedQuant()` `fetch_quant()`, `decompress_quant()` and then `load_quant()` in turn, or `FDL()`, which integrates the four functions into a single function.
 
 ### python interface
 
-We provide the same functions and class methods described above for fetching and loading the quantification result of datasets in the [`pyroe` python package](https://github.com/COMBINE-lab/pyroe), which can be installed via `pip` using the command:
+We provide analogous functions and class methods described above for fetching and loading the quantification result of datasets in the [`pyroe` python package](https://github.com/COMBINE-lab/pyroe), which can be installed via `pip` using the command:
 
 ```bash
 pip install pyroe
-
 ```
+
 or via conda using the command:
+
 ```bash
 conda install -c Bioconda pyroe
-
 ```
 
 Thanks to the flexibility of python, we offers a CLI, `pyroe fetch-quant`, for fetching and then decompressing the quantification results of any number of available datasets. The only required input is the dataset id of some available datasets. The complete list of dataset name and id is included in the help message (run `pyroe fetch-quant -h`). One can provide multiple dataset ids, separated by space, to fetch the quantification result of multiple datasets at once, for example, to fetch and decompress the quantification result of dataset #1, #3 and #6, run the command:
