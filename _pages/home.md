@@ -93,7 +93,7 @@ pq_ds1@dataset_name
 pq_ds1@quant_link
 
 # get the path to the quantification result of datset #1 and #3
-pq_ds1@quant_link
+pq_ds1@quant_path
 
 # get the SingleCellExperiment object
 pq_ds1@sce
