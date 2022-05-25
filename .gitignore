@@ -1,0 +1,5 @@
+*nextflow
+.nextflow.log*
+pipeline_trace*
+nf_pipeline
+work

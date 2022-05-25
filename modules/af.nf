@@ -1,38 +1,50 @@
-
+import groovy.json.JsonOutput
 /*
 * This process takes the output produced by the 
 * `salmon_map_rad` rule and generates a permit list 
 * with alevin-fry (currently using the knee method).
 */
 process alevin_fry_gpl {
-    tag "fry_gpl:${MD5}:${filt_type}"
-    conda "bioconda::alevin-fry"
+    tag "fry_gpl:${fastq_MD5sum}:${filt_type}"
+    // conda "bioconda::alevin-fry"
     label 'single_threads'
 
     input:
+        val chemistry
+        val reference
         val dataset_name
-        val dataset_webpage
-        val MD5
-        path permitlist
-        path t2g
-        path map_dir
+        val dataset_url
+        val fastq_url
+        val fastq_MD5sum
+        val delete_fastq
+        val feature_barcode_csv_url
+        val multiplexing_library_csv_url
         val filt_type
+        path pl_path
+        path t2g_path
+        path map_dir_path
 
     output:
+        val chemistry, emit: chemistry
+        val reference, emit: reference
         val dataset_name, emit: dataset_name
-        val dataset_webpage, emit: dataset_webpage
-        val MD5, emit: MD5
-        path permitlist, emit: permitlist
-        path t2g, emit: t2g
-        path map_dir, emit: map_dir
+        val dataset_url, emit: dataset_url
+        val fastq_url, emit:fastq_url
+        val fastq_MD5sum, emit: fastq_MD5sum
+        val delete_fastq, emit: delete_fastq
+        val feature_barcode_csv_url, emit: feature_barcode_csv_url
+        val multiplexing_library_csv_url, emit: multiplexing_library_csv_url
         val filt_type, emit: filt_type
-        path "${MD5}_permitlist_${filt_type}_fw", emit: permit_dir
+        path pl_path, emit: pl_path
+        path t2g_path, emit: t2g_path
+        path map_dir_path, emit: map_dir_path
+        path "${fastq_MD5sum}_permitlist_${filt_type}_fw", emit: permit_dir_path
 
     script:
-        filt_flag = (filt_type == "knee") ? "-k" : "-u ${permitlist}"
+        filt_flag = (filt_type == "knee") ? "-k" : "-u ${pl_path}"
 
         cmd = """
-        $params.timecmd -v -o ${MD5}_logs_permitlist_${filt_type}.time alevin-fry generate-permit-list ${filt_flag} -d fw -i ${map_dir} -o ${MD5}_permitlist_${filt_type}_fw
+        $params.timecmd -v -o ${fastq_MD5sum}_logs_permitlist_${filt_type}.time alevin-fry generate-permit-list ${filt_flag} -d fw -i ${map_dir_path} -o ${fastq_MD5sum}_permitlist_${filt_type}_fw
         """
 
         """
@@ -40,17 +52,17 @@ process alevin_fry_gpl {
         """
     
     stub:
-        filt_flag = (filt_type == "knee") ? "-k" : "-u ${permitlist}"
+        filt_flag = (filt_type == "knee") ? "-k" : "-u ${pl_path}"
         cmd = """
-        $params.timecmd -v -o ${MD5}_logs_permitlist_${filt_type}.time alevin-fry generate-permit-list ${filt_flag} -d fw -i ${map_dir} -o ${MD5}_permitlist_${filt_type}_fw
+        $params.timecmd -v -o ${fastq_MD5sum}_logs_permitlist_${filt_type}.time alevin-fry generate-permit-list ${filt_flag} -d fw -i ${map_dir_path} -o ${fastq_MD5sum}_permitlist_${filt_type}_fw
         """
 
         """
         echo "running ${cmd}"
-        echo ${map_dir}
-        echo ${MD5}_permitlist_${filt_type}_fw
-        mkdir ${MD5}_permitlist_${filt_type}_fw
-        touch ${MD5}_permitlist_${filt_type}_fw/permit_map.bin
+        echo ${map_dir_path}
+        echo ${fastq_MD5sum}_permitlist_${filt_type}_fw
+        mkdir ${fastq_MD5sum}_permitlist_${filt_type}_fw
+        touch ${fastq_MD5sum}_permitlist_${filt_type}_fw/permit_map.bin
         """
 }
 
@@ -60,34 +72,46 @@ process alevin_fry_gpl {
 * RAD file.
 */
 process alevin_fry_collate {
-    tag "fry_collate:${MD5}:${filt_type}"
+    tag "fry_collate:${fastq_MD5sum}:${filt_type}"
     label 'multi_threads'
-    conda "bioconda::alevin-fry"
+    // conda "bioconda::alevin-fry"
 
     input:
+        val chemistry
+        val reference
         val dataset_name
-        val dataset_webpage
-        val MD5
-        path permitlist
-        path t2g
-        path map_dir
+        val dataset_url
+        val fastq_url
+        val fastq_MD5sum
+        val delete_fastq
+        val feature_barcode_csv_url
+        val multiplexing_library_csv_url
         val filt_type
-        path permit_dir
+        path pl_path
+        path t2g_path
+        path map_dir_path
+        path permit_dir_path
 
     output:
+        val chemistry, emit: chemistry
+        val reference, emit: reference
         val dataset_name, emit: dataset_name
-        val dataset_webpage, emit: dataset_webpage
-        val MD5, emit: MD5
-        path permitlist, emit: permitlist
-        path t2g, emit: t2g
-        path map_dir, emit: map_dir
+        val dataset_url, emit: dataset_url
+        val fastq_url, emit:fastq_url
+        val fastq_MD5sum, emit: fastq_MD5sum
+        val delete_fastq, emit: delete_fastq
+        val feature_barcode_csv_url, emit: feature_barcode_csv_url
+        val multiplexing_library_csv_url, emit: multiplexing_library_csv_url
         val filt_type, emit: filt_type
-        path permit_dir, emit: collate_dir
+        path pl_path, emit: pl_path
+        path t2g_path, emit: t2g_path
+        path map_dir_path, emit: map_dir_path
+        path permit_dir_path, emit: collate_dir
 
     script:
         cmd = """
-        $params.timecmd -v -o ${MD5}_logs_collate_${filt_type}.time alevin-fry collate \
-    -i ${permit_dir} -r ${map_dir} -t ${task.cpus} 
+        $params.timecmd -v -o ${fastq_MD5sum}_logs_collate_${filt_type}.time alevin-fry collate \
+    -i ${permit_dir_path} -r ${map_dir_path} -t ${task.cpus} 
         """
 
         """
@@ -96,14 +120,14 @@ process alevin_fry_collate {
 
     stub:
     cmd = """
-        $params.timecmd -v -o ${MD5}_logs_collate_${filt_type}.time alevin-fry collate \
-    -i ${permit_dir} -r ${map_dir} -t ${task.cpus} 
+        $params.timecmd -v -o ${fastq_MD5sum}_logs_collate_${filt_type}.time alevin-fry collate \
+    -i ${permit_dir_path} -r ${map_dir_path} -t ${task.cpus} 
     """
 
     """
     echo "executing :: ${cmd}"
-    # mkdir -p ${permit_dir}
-    touch ${permit_dir}/map.collated.rad
+    # mkdir -p ${permit_dir_path}
+    touch ${permit_dir_path}/map.collated.rad
     """
 }
 
@@ -113,177 +137,139 @@ process alevin_fry_collate {
 * quantification.
 */
 process alevin_fry_quant {
-    tag "fry_quant:${MD5}:${filt_type}"
-    conda "bioconda::alevin-fry"
+    tag "fry_quant:${fastq_MD5sum}:${filt_type}"
+    // conda "bioconda::alevin-fry"
     label 'multi_threads'
 
     publishDir "${params.output_dir}/alevin_fry", mode: 'copy'
     
     input:
+        val chemistry
+        val reference
         val dataset_name
-        val dataset_webpage
-        val MD5
-        path permitlist
-        path t2g
-        path map_dir
+        val dataset_url
+        val fastq_url
+        val fastq_MD5sum
+        val delete_fastq
+        val feature_barcode_csv_url
+        val multiplexing_library_csv_url
         val filt_type
+        path pl_path
+        path t2g_path
+        path map_dir_path
         path collate_dir
 
     output:
-        path "${odir}/dataset_description.txt", emit: dataset_description
+        val chemistry, emit: chemistry
+        val reference, emit: reference
+        val dataset_name, emit: dataset_name
+        val dataset_url, emit: dataset_url
+        val fastq_url, emit:fastq_url
+        val fastq_MD5sum, emit: fastq_MD5sum
+        val delete_fastq, emit: delete_fastq
+        val feature_barcode_csv_url, emit: feature_barcode_csv_url
+        val multiplexing_library_csv_url, emit: multiplexing_library_csv_url
+        val filt_type, emit: filt_type
         path "${odir}/**", emit: quant_dir
 
     script:
-        odir = "${MD5}_fry_${filt_type}_quant_usa_cr-like"
-        cmd = """$params.timecmd -v -o ${MD5}_logs_quant_${filt_type}.time alevin-fry quant \
-    -r cr-like --use-mtx -m ${t2g} -i ${collate_dir} -o ${odir} -t ${task.cpus}"""
-
+        odir = "${fastq_MD5sum}_fry_${filt_type}_quant_usa_cr-like"
+        cmd = """$params.timecmd -v -o ${fastq_MD5sum}_logs_quant_${filt_type}.time alevin-fry quant \
+    -r cr-like --use-mtx -m ${t2g_path} -i ${collate_dir} -o ${odir} -t ${task.cpus}"""
         """
             ${cmd}
-            echo ${dataset_name} > ${odir}/dataset_description.txt
-            echo "${dataset_webpage}" >> ${odir}/dataset_description.txt
-            tar cf ${odir}.tar ${odir}
         """
 
     stub:
-        odir = "${MD5}_fry_${filt_type}_quant_usa_cr-like"
-        cmd = """$params.timecmd -v -o ${MD5}_logs_quant_${filt_type}.time alevin-fry quant \
-    -r cr-like --use-mtx -m ${t2g} -i ${collate_dir} -o ${odir} -t ${task.cpus}"""
+        odir = "${fastq_MD5sum}_fry_${filt_type}_quant_usa_cr-like"
+        cmd = """$params.timecmd -v -o ${fastq_MD5sum}_logs_quant_${filt_type}.time alevin-fry quant \
+    -r cr-like --use-mtx -m ${t2g_path} -i ${collate_dir} -o ${odir} -t ${task.cpus}"""
 
         """
             echo "executing :: ${cmd}"
             mkdir -p ${odir}
-            touch ${odir}/dataset_description.txt
-            echo ${dataset_name} > ${odir}/dataset_description.txt
-            echo "${dataset_webpage}" >> ${odir}/dataset_description.txt
             touch ${odir}/meta_info.json
-            tar cf ${odir}.tar ${odir}
-
         """
 }
 
-workflow af_gpl {
-    take: 
-        dataset_name
-        dataset_webpage
-        MD5
-        permitlist
-        t2g
-        map_dir
-        filt_type
+process write_description {
+    tag "write_description:${fastq_MD5sum}:${filt_type}"
+    // conda "bioconda::alevin-fry"
+    label 'single_threads'
 
+    publishDir "${params.output_dir}/alevin_fry/${fastq_MD5sum}_fry_${filt_type}_quant_usa_cr-like", mode: 'copy'
 
-    main: 
-        alevin_fry_gpl(
-            dataset_name,
-            dataset_webpage,
-            MD5,
-            permitlist,
-            t2g,
-            map_dir,
-            filt_type
-        )
+    input:
+        val chemistry
+        val reference
+        val dataset_name
+        val dataset_url
+        val fastq_url
+        val fastq_MD5sum
+        val delete_fastq
+        val feature_barcode_csv_url
+        val multiplexing_library_csv_url
+        val filt_type
+        path quant_dir
 
-    emit: 
-        alevin_fry_gpl.out.dataset_name
-        alevin_fry_gpl.out.dataset_webpage
-        alevin_fry_gpl.out.MD5
-        alevin_fry_gpl.out.permitlist
-        alevin_fry_gpl.out.t2g
-        alevin_fry_gpl.out.map_dir
-        alevin_fry_gpl.out.filt_type
-        alevin_fry_gpl.out.permit_dir
-}
-
-workflow af_collate {
-    take: 
-        dataset_name
-        dataset_webpage
-        MD5
-        permitlist
-        t2g
-        map_dir
-        filt_type
-        permit_dir
+    output:
+        path "dataset_description.json", emit: dataset_description
     
-    main: 
-        alevin_fry_collate(
-            dataset_name,
-            dataset_webpage,
-            MD5,
-            permitlist,
-            t2g,
-            map_dir,
-            filt_type, 
-            permit_dir
-        )
-
-    emit: 
-        alevin_fry_collate.out.dataset_name
-        alevin_fry_collate.out.dataset_webpage
-        alevin_fry_collate.out.MD5
-        alevin_fry_collate.out.permitlist
-        alevin_fry_collate.out.t2g
-        alevin_fry_collate.out.map_dir
-        alevin_fry_collate.out.filt_type
-        alevin_fry_collate.out.collate_dir
-}
-
-workflow af_quant {
-    take: 
-        dataset_name
-        dataset_webpage
-        MD5
-        permitlist
-        t2g
-        map_dir
-        filt_type
-        collate_dir
-
-    main: 
-        alevin_fry_quant(
-            dataset_name,
-            dataset_webpage,
-            MD5,
-            permitlist,
-            t2g,
-            map_dir,
-            filt_type, 
-            collate_dir
-        )
-
-    emit: 
-        // alevin_fry_quant.out.dataset_description // name
-        alevin_fry_quant.out.quant_dir // quant-dir
+    exec:
+        // from here
+        // https://groups.google.com/g/nextflow/c/tp_b1p0DBE4?pli=1
+        def json = JsonOutput.toJson(  [chemistry: "${chemistry}", 
+                                        reference: "${reference}", 
+                                        dataset_name: "${dataset_name}", 
+                                        dataset_url: "${dataset_url}", 
+                                        fastq_url: "${fastq_url}", 
+                                        fastq_MD5sum: "${fastq_MD5sum}", 
+                                        delete_fastq: "${delete_fastq}", 
+                                        feature_barcode_csv_url: "${feature_barcode_csv_url}", 
+                                        multiplexing_library_csv_url: "${multiplexing_library_csv_url}"
+                                        ]
+                                    )
+        task.workDir.resolve("dataset_description.json").text = json
+        // new File("$dataset_description").write(json)
 }
 
 workflow af {
     take:
+        chemistry
+        reference
         dataset_name
-        dataset_webpage
-        MD5
-        permitlist
-        t2g
-        map_dir
-        map_rad
-        unmapped_file
+        dataset_url
+        fastq_url
+        fastq_MD5sum
+        delete_fastq
+        feature_barcode_csv_url
+        multiplexing_library_csv_url
+        pl_path
+        t2g_path
+        map_dir_path
+        map_rad_path
+        unmapped_file_path
         filt_type
 
-    emit:
-        dataset_name
-
     main:
-        af_gpl(
+        alevin_fry_gpl(
+            chemistry,
+            reference,
             dataset_name,
-            dataset_webpage,
-            MD5,
-            permitlist,
-            t2g,
-            map_dir,
-            filt_type
+            dataset_url,
+            fastq_url,
+            fastq_MD5sum,
+            delete_fastq,
+            feature_barcode_csv_url,
+            multiplexing_library_csv_url,
+            filt_type,
+            pl_path,
+            t2g_path,
+            map_dir_path
         ) \
-        | af_collate \
-        | af_quant
+        | alevin_fry_collate \
+        | alevin_fry_quant \
+        | write_description
 }
 
 

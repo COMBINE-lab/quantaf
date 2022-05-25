@@ -1,4 +1,4 @@
-chemistry	reference	dataset_name	link	data_url	MD5	delete_fastq	feature_barcode	library_csv
+chemistry	reference	dataset_name	dataset_url	fastq_url	fastq_MD5sum	delete_fastq	feature_barcode_csv_url	multiplexing_library_csv_url
 v3	human2020A	500 Human PBMCs, 3' LT v3.1, Chromium Controller	https://www.10xgenomics.com/resources/datasets/500-human-pbm-cs-3-lt-v-3-1-chromium-controller-3-1-low-6-1-0	https://cf.10xgenomics.com/samples/cell-exp/6.1.0/500_PBMC_3p_LT_Chromium_Controller/500_PBMC_3p_LT_Chromium_Controller_fastqs.tar	5f080c6082f11ea9fc6448482e6fb590	1		
 v3	human2020A	500 Human PBMCs, 3' LT v3.1, Chromium X	https://www.10xgenomics.com/resources/datasets/500-human-pbm-cs-3-lt-v-3-1-chromium-x-3-1-low-6-1-0	https://cf.10xgenomics.com/samples/cell-exp/6.1.0/500_PBMC_3p_LT_Chromium_X/500_PBMC_3p_LT_Chromium_X_fastqs.tar	5b36a7bfda36a7093adc8e30c3fa92c8	1		
 v3	human2020A	1k PBMCs from a Healthy Donor (v3 chemistry)	https://www.10xgenomics.com/resources/datasets/1-k-pbm-cs-from-a-healthy-donor-v-3-chemistry-3-standard-3-0-0	https://cf.10xgenomics.com/samples/cell-exp/3.0.0/pbmc_1k_v3/pbmc_1k_v3_fastqs.tar	265ebe8f77ad90db350984d9c7a59e52	1		

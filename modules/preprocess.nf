@@ -44,7 +44,7 @@ process get_permitlist {
 */
 process get_splici {
     tag "get_permitlist:${reference}"
-    conda "bioconda::bedtools bioconda::pyroe"
+    // conda "bioconda::bedtools bioconda::pyroe"
 
     input:
         tuple val(reference), val(link)
@@ -84,7 +84,7 @@ process get_splici {
 process salmon_index {
     tag "salmon_index:${reference}"
 
-    conda "bioconda::salmon"
+    // conda "bioconda::salmon"
 
     label 'multi_threads'
 
