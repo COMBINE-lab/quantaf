@@ -1,6 +1,6 @@
 nextflow
 .nextflow
-/.nextflow.*
+.nextflow.*
 pipeline_trace*
 nf_pipeline
 work
