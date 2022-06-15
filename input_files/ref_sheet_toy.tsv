@@ -1,2 +1,2 @@
-reference	link
-human-toy	https://umd.box.com/shared/static/7v6mof9emgudmuczc4lnwz4oou7xayks.gz
+reference	link	fasta	gtf
+human-toy-download	~/quantaf/genomic_data/7v6mof9emgudmuczc4lnwz4oou7xayks.tar.gz	/fasta/genome.fa	/genes/genes.gtf

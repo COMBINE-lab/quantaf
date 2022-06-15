@@ -25,7 +25,6 @@ workflow {
       // producing both the knee filtered and 
       // unfiltered output
       preprocess()
-
   // merge permit list
       data = preprocess.out.chem_pl.cross(data)
             .map(it -> tuple(it[1][1], // reference
@@ -35,11 +34,10 @@ workflow {
                               it[1][3], // dataset_url
                               it[1][4], // fastq_url
                               it[1][5], // fastq_MD5sum
-                              it[1][6], // delete_fastq
+                            o  it[1][6], // delete_fastq
                               it[1][7], // feature_barcode_csv_url
                               it[1][8]  // multiplexing_library_csv_url
             ))
-
   // merge t2g and salmon index
       data = preprocess.out.ref_t2g_index.cross(data)
             .map(it -> tuple( it[1][1], // chemistry
@@ -55,7 +53,6 @@ workflow {
                               it[1][2], // pl_path
                               it[0][1] // t2g_path
             ))
-
       salmon_map(data) 
       af(salmon_map.out, Channel.value("unfilt"))
 }

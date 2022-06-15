@@ -14,8 +14,7 @@ process get_permitlist {
         tuple val(chemistry), file(ofile_name), emit: chem_pl
 
     script:
-        ofile_name = link.getName()
-
+        ofile_name = link.getName()    
     if (link.getExtension() != 'txt') {
         ofile_name = link.getBaseName()
         """
@@ -47,7 +46,7 @@ process get_splici {
     // conda "bioconda::bedtools bioconda::pyroe"
 
     input:
-        tuple val(reference), val(link)
+        tuple val(reference), val(link), val(fasta), val(gtf)
         
     output:
         tuple val(reference),
@@ -56,11 +55,40 @@ process get_splici {
         emit: splici
 
     script:
+    if (link.substring(0,4).equals("http")) {
+        faPath =  new File("reference_" + reference, fasta)
+        gtfPath = new File("reference_" + reference, gtf)
         """
         mkdir reference_$reference && wget -qO- ${link} | tar xzf - --strip-components=1 -C reference_$reference
-        pyroe make-splici reference_$reference/fasta/genome.fa reference_$reference/genes/genes.gtf ${params.read_len} splici_$reference
+        pyroe make-splici $faPath $gtfPath ${params.read_len} splici_$reference
         rm -rf reference_$reference
         """
+    } else if(link.substring(link.length()-7, link.length()).equals(".tar.gz")) {
+        """
+        mkdir reference_$reference
+        tar xvf ${link} --strip-components=1 -C reference_$reference
+        pyroe make-splici reference_$reference$fasta reference_$reference$gtf ${params.read_len} splici_$reference
+        rm -rf reference_$reference
+        """
+    } else if(link.substring(link.length()-4, link.length()).equals(".tar")) {
+        """
+        mkdir reference_$reference
+        tar xvf ${link} --strip-components=1 -C reference_$reference
+        pyroe make-splici reference_$reference$fasta reference_$reference$gtf ${params.read_len} splici_$reference
+        rm -rf reference_$reference
+        """
+    } else if(link.substring(link.length()-4, link.length()).equals(".gz")) {
+        """
+        mkdir reference_$reference
+        gunzip -c ${link} > reference_$reference
+        pyroe make-splici reference_$reference$fasta reference_$reference$gtf ${params.read_len} splici_$reference
+        rm -rf reference_$reference
+        """
+    } else {
+        """
+        echo Invalid link provided for reference $reference
+        """
+    }
     stub:
         """
             mkdir reference_$reference
@@ -134,23 +162,22 @@ workflow preprocess {
     pl_sheet = Channel
             .fromPath(params.input_sheets.permitlist)
             .splitCsv(header:true, sep:"\t", strip: true)
-            .map{ row-> tuple(row.reference,
+            .map{ row-> tuple(row.chemistry,
                             row.link)
             }
     get_permitlist(pl_sheet)
-
+    
     ref_sheet = Channel
                 .fromPath(params.input_sheets.reference)
                 .splitCsv(header:true, sep:"\t", strip: true)
                 .map{ row-> tuple(row.reference,
-                                row.link)
+                                row.link, row.fasta, row.gtf)
                 }
     get_splici(ref_sheet)
     salmon_index(get_splici.out)
     
     chem_pl = get_permitlist.out.chem_pl
     ref_t2g_index = salmon_index.out.ref_t2g_index
-
     emit:
         chem_pl
         ref_t2g_index
