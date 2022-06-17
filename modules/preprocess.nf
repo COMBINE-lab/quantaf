@@ -1,4 +1,4 @@
-
+import groovy.io.FileType
 /*
 * based on the provided reference and link of permit list, 
 * download and maybe uncompress the files 
@@ -29,48 +29,6 @@ process get_permitlist {
 
 // turn the tuple to a map so that we can query the value by key
 // permitlist = permitlist.flatMap { ["${it[0]}" : it[1]] }
-
-
-
-/*
-* based on the provided reference and link of cellranger references, 
-* download and uncompress on the fly, and make splici for them 
-* NOTE: 
-* 1. require a tsv named ref_sheet.tsv in the ${bench_dir}/input_files
-* 2. only work for pre-built cellranger references, like humand2020A and mm10-2020A
-* 3. if other reference needed, this process has to be expanded to 
-*    enable cellranger to make reference 
-*/
-process get_splici {
-    tag "get_splici:${reference}"
-    // conda "bioconda::bedtools bioconda::pyroe"
-
-    input:
-        tuple val(reference), val(link)
-        
-    output:
-        tuple val(reference),
-        path("splici_$reference/splici_fl${params.read_len - 5}.fa"), 
-        path("splici_$reference/splici_fl${params.read_len - 5}_t2g_3col.tsv"), 
-        emit: splici
-
-    script:
-        """
-        pyroe make-splici reference_$reference/fasta/genome.fa reference_$reference/genes/genes.gtf ${params.read_len} splici_$reference
-        rm -rf reference_$reference
-        """
-    stub:
-        """
-            mkdir reference_$reference
-            mkdir reference_$reference/genes && touch reference_$reference/genes/genes.gtf
-            mkdir reference_$reference/fasta && touch reference_$reference/fasta/genome.fa
-
-            mkdir splici_$reference
-            touch splici_$reference/splici_fl${params.read_len-5}.fa
-            touch splici_$reference/splici_fl${params.read_len-5}_t2g_3col.tsv
-            rm -rf reference_$reference
-        """
-}
 
 
 /*
@@ -120,21 +78,60 @@ process salmon_index {
         """
 }
 
-process pre_splici {
+
+/*
+* based on the provided reference and link of cellranger references, 
+* download and uncompress on the fly, and make splici for them 
+* NOTE: 
+* 1. require a tsv named ref_sheet.tsv in the ${bench_dir}/input_files
+* 2. only work for pre-built cellranger references, like humand2020A and mm10-2020A
+* 3. if other reference needed, this process has to be expanded to 
+*    enable cellranger to make reference 
+*/
+process get_splici {
     tag "get_splici:${reference}"
+    // conda "bioconda::bedtools bioconda::pyroe"
+
+    input:
+        tuple val(reference), path(ref_path)
+        
+    output:
+        tuple val(reference),
+        path("splici_$reference/splici_fl${params.read_len - 5}.fa"), 
+        path("splici_$reference/splici_fl${params.read_len - 5}_t2g_3col.tsv"), 
+        emit: splici
+
+    script:
+        """
+        pyroe make-splici ${ref_path}/fasta/genome.fa ${ref_path}/genes/genes.gtf ${params.read_len} splici_$reference
+        rm -rf ${ref_path}/
+        """
+    stub:
+        """
+            mkdir reference_$reference
+            mkdir reference_$reference/genes && touch reference_$reference/genes/genes.gtf
+            mkdir reference_$reference/fasta && touch reference_$reference/fasta/genome.fa
+            mkdir splici_$reference
+            touch splici_$reference/splici_fl${params.read_len-5}.fa
+            touch splici_$reference/splici_fl${params.read_len-5}_t2g_3col.tsv
+            rm -rf reference_$reference
+        """
+}
+
+
+process pre_splici {
+    tag "pre_splici:${reference}"
 
     input:
         tuple val(reference), val(ref_data), val(fasta), val(gtf)
     
     output:
         tuple val(reference),
-        path(splici_path)
+        path(ref_path),
         emit: processed_splici_path
 
     script:
-        """
-        mkdir reference_$reference
-        """
+        ref_path = "reference_${reference}"
         //faPath =  new File(ref_data, fasta)
         //gtfPath = new File(ref_data, gtf)
         //[ ! -f "reference_$reference$gtf" ] && echo "File not found in user specified location reference_${reference}${gtf}"
@@ -143,21 +140,40 @@ process pre_splici {
             //Download fasta, check gtf is absolute path
             gtfFile = new File(gtf)
             if (gtfFile.exits()) { //If it does exist
-                new_path = unzip_file(gtf,reference)
+                unzip_file(gtf,reference)
                 //if the genes directory is not made in unzip, make it
                 """
                 [! -d reference_$reference/genes] && mkdir reference_$reference/genes
-                [! -f reference_$reference/genes/genes.gtf] && mv  
                 """
             }
         } else if (!fasta.substring(0,4).equals("http") && gtf.substring(0,4).equals("http")) { //Gtf is an https link, fasta is an absolute path
             //Download gtf, check fasta is absolute path
         } else if (fasta.substring(0,4).equals("http") && gtf.substring(0,4).equals("http")) { //Gtf and fasta are https links
-            //download gtf and fasta
+            //Download both
+            if(fasta.contains(".tar") && gtf.contains(".tar")) {
+                """
+                mkdir $ref_path
+                mkdir $ref_path/fasta/
+                wget -q0- $fasta | tar xzf - --strip-components=1 -C $ref_path/fasta/genome.fa
+                mkdir $ref_path/genes/
+                wget -qO- $gtf | tar xzf - --strip-components=1 -C $ref_path/genes/genes.gtf
+                """
+            }
+            else if (fasta.contains(".gz") && gtf.contains(".gz")) {
+                """
+                mkdir $ref_path
+                mkdir $ref_path/fasta/
+                wget -qO- $fasta | gunzip -c > $ref_path/fasta/genome.fa
+                mkdir $ref_path/genes/
+                wget -qO- $gtf | gunzip -c > $ref_path/genes/genes.gtf
+                """
+            } //add in options for mistmatched type
         } else if (!fasta.substring(0,4).equals("http") && !gtf.substring(0,4).equals("http")) {
             //check if its an absolute path, otherwise download ref_data and check in specified locations
+            //ref_path = file("reference_$reference/")    
             """
-            mkdir reference_$reference && wget -qO- ${ref_data} | tar xzf - --strip-components=1 -C reference_$reference
+            mkdir reference_$reference
+            wget -qO- ${ref_data} | tar xzf - --strip-components=1 -C reference_$reference
             """
         }
     } else if(ref_data.substring(ref_data.length()-7, ref_data.length()).equals(".tar.gz")) {
@@ -180,21 +196,8 @@ process pre_splici {
         echo Invalid ref_data provided for reference $reference
         """
     }
-        
 }
 
-def unzip_file(path, reference, move) {
-    tar = path.contains(".tar")
-    if(tar) { //if its tar, unzip the tarball
-        """
-        tar xzf $path --strip-components=1 -C ${reference}_unzip
-        """
-    } else if (file(path).getExtension().equal(".gz")) { //if its gzip, gunzip it
-        """
-        gunzip -c ${path} > reference_$reference
-        """
-    } //otherwise assume it is valid for use
-}
 
 
 /*
@@ -218,9 +221,9 @@ workflow preprocess {
                 .fromPath(params.input_sheets.reference)
                 .splitCsv(header:true, sep:"\t", strip: true)
                 .map{ row-> tuple(row.reference,
-                                row.link, row.fasta, row.gtf)
+                                row.ref_data, row.fasta, row.gtf)
                 }
-    pre_splici(ref_sheet)            
+    pre_splici(ref_sheet)
     get_splici(pre_splici.out)
     salmon_index(get_splici.out)
     

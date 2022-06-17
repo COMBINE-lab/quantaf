@@ -34,7 +34,7 @@ workflow {
                               it[1][3], // dataset_url
                               it[1][4], // fastq_url
                               it[1][5], // fastq_MD5sum
-                            o  it[1][6], // delete_fastq
+                              it[1][6], // delete_fastq
                               it[1][7], // feature_barcode_csv_url
                               it[1][8]  // multiplexing_library_csv_url
             ))
