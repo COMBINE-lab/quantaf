@@ -1,5 +1,7 @@
 reference	ref_data	fasta	gtf
 human-toy-download-ref	https://umd.box.com/shared/static/7v6mof9emgudmuczc4lnwz4oou7xayks.gz	fasta/genome.fa	genes/genes.gtf
+human-toy-download-ref-gtf	https://umd.box.com/shared/static/7v6mof9emgudmuczc4lnwz4oou7xayks.gz	https://github.com/njj67229/quantaf/blob/main/genomic_data/fasta/genome.fa.gz?raw=true	genes/genes.gtf
+human-toy-download-ref-fa	https://umd.box.com/shared/static/7v6mof9emgudmuczc4lnwz4oou7xayks.gz	fasta/genome.fa	https://github.com/njj67229/quantaf/blob/main/genomic_data/genes/genes.gtf.gz?raw=true
 human-toy-download-gtf-fa	https://umd.box.com/shared/static/7v6mof9emgudmuczc4lnwz4oou7xayks.gz	https://github.com/njj67229/quantaf/blob/main/genomic_data/fasta/genome.fa.gz?raw=true	https://github.com/njj67229/quantaf/blob/main/genomic_data/genes/genes.gtf.gz?raw=true
 human-toy-download-fa-abs-gtf	randommeaninglessfillerstring	https://github.com/njj67229/quantaf/blob/main/genomic_data/fasta/genome.fa.gz?raw=true	/cbcbhomes/njacobi/quantaf/genomic_data/genes/genes.gtf
 human-toy-download-gtf-abs-fa	randommeaninglessfillerstring	/cbcbhomes/njacobi/quantaf/genomic_data/fasta/genome.fa	https://github.com/njj67229/quantaf/blob/main/genomic_data/genes/genes.gtf.gz?raw=true

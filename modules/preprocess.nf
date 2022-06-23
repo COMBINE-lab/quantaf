@@ -1,4 +1,5 @@
 import groovy.io.FileType
+
 /*
 * based on the provided reference and link of permit list, 
 * download and maybe uncompress the files 
@@ -80,13 +81,10 @@ process salmon_index {
 
 
 /*
-* based on the provided reference and link of cellranger references, 
-* download and uncompress on the fly, and make splici for them 
+* based on the provided and processed reference sheet, and make splici for them 
 * NOTE: 
 * 1. require a tsv named ref_sheet.tsv in the ${bench_dir}/input_files
-* 2. only work for pre-built cellranger references, like humand2020A and mm10-2020A
-* 3. if other reference needed, this process has to be expanded to 
-*    enable cellranger to make reference 
+* 2. any combination of local and remote, zipped/unzipped should be accepted
 */
 process get_splici {
     tag "get_splici:${reference}"
@@ -119,6 +117,12 @@ process get_splici {
         """
 }
 
+/*
+* Process sets up reference data based on the provided reference link or local path,
+* which could contain data for both gtf and fasta files, just one, or neither if user 
+* provides seperate paths or remote links to both files
+*/
+
 process process_ref_data {
     tag "ref:${reference}"
 
@@ -130,33 +134,28 @@ process process_ref_data {
 
     script:
         ref_path = "reference_${reference}/"
-    if (!fasta.substring(0,4).equals("http") && !gtf.substring(0,4).equals("http")) {   
-        if (ref_data.substring(0,4).equals("http")) { //check if ref_data is https or local
+    if (ref_data.length () > 3 && ref_data.substring(0,4).equals("http")) { //check if ref_data is https or local
             """
             mkdir $ref_path
             wget -qO- $ref_data | tar xzf - --strip-components=1 -C $ref_path
-            find > ~/out2.txt
-            pwd >> ~/out2.txt
             """
-        } else { //if its local see if its a tarball or if its just fasta and gtf
-            if(ref_data.contains("gz") || ref_data.contains("tar")) {
-                """
-                mkdir $ref_path
-                tar xzf - --strip-components=1 -C $ref_path
-                """
-            } else {
-                """
-                mkdir $ref_path
-                """
-                //cp -rf $ref_data $ref_path/
-            }    
-        }
+    } else if(ref_data.contains("gz") || ref_data.contains("tar")) { //if its local see if its a tarball or if its just fasta and gtf
+        """
+        mkdir $ref_path
+        tar xzf - --strip-components=1 -C $ref_path
+        """
     } else {
         """
         mkdir $ref_path
         """
-    }  
+        //cp -rf $ref_data $ref_path/    
+    }
 }
+
+/*
+* Process sets up gtf and fasta data based on the provided input in ref_sheet;
+* if it is not a link, standardizes it to a absolute path for future use
+*/
 
 process standardize_files {
     tag "standardize_files:$reference"
@@ -167,7 +166,7 @@ process standardize_files {
         tuple val(reference), path(ref_path), val(fasta), val(gtf),
         emit: standardized_files_data
     script:
-        if(!fasta.substring(0,4).equals("http")) { //fasta is not a url, and is a file
+        if(fasta.length () > 3 && !fasta.substring(0,4).equals("http")) { //fasta is not a url, and is a file
             ref_fasta = file(ref_path.toRealPath() + "/$fasta") //fasta is within given reference path
             rel_fasta = file("${projectDir}/${fasta}") //fasta is relative to project directory
             abs_fasta = file("$fasta") //fasta is absolute path
@@ -179,7 +178,7 @@ process standardize_files {
                 //fasta is an absolute path
             }
         }
-        if(!gtf.substring(0,4).equals("http")) {    
+        if(gtf.length () > 3 && !gtf.substring(0,4).equals("http")) {   
             ref_gtf = file(ref_path.toRealPath() + "/$gtf")
             rel_gtf = file("${projectDir}/${gtf}")
             abs_gtf = file("$gtf")
@@ -197,6 +196,10 @@ process standardize_files {
         
 }
 
+/*
+* Downloads, unzips, or moves provided fasta file in ref_sheet to 
+* correct location to be used in splici generation
+*/
 process process_fasta {
     tag "process_fasta:$reference"
 
@@ -210,19 +213,19 @@ process process_fasta {
         abs_fasta = file("$fasta")
         target = ref_path.toRealPath() + "/fasta/genome.fa"
         target = target.toString()
-        if (fasta.substring(0,4).equals("http") && fasta.contains(".tar")) { //fasta is remote tarball
+        if (fasta.length () > 3 && fasta.substring(0,4).equals("http") && fasta.contains(".tar")) { //fasta is remote tarball
             //download and untar
             """
             mkdir -p $ref_path/fasta/
             wget -qO- $fasta | tar xzf - --strip-components=1 -C $ref_path/fasta/genome.fa
             """
-        } else if (fasta.substring(0,4).equals("http") && fasta.contains(".gz")) { //fasta is remote gzip
+        } else if (fasta.length () > 3 && fasta.substring(0,4).equals("http") && fasta.contains(".gz")) { //fasta is remote gzip
             //download and unzip
             """
             mkdir -p $ref_path/fasta/
             wget -qO- $fasta | gunzip -c > $ref_path/fasta/genome.fa
             """
-        }  else if (fasta.substring(0,4).equals("http")) { //fasta is remote
+        }  else if (fasta.length () > 3 && fasta.substring(0,4).equals("http")) { //fasta is remote
             //download and move
             """
             mkdir -p $ref_path/fasta/
@@ -247,8 +250,7 @@ process process_fasta {
                 mkdir -p $ref_path/fasta
                 cp $fasta $target
                 """
-            } else {
-                print("Fasta file in correct location for $reference")
+            } else { //file exactly where it needs to be
                 """
 
                 """
@@ -256,6 +258,10 @@ process process_fasta {
         }
 }
 
+/*
+* Downloads, unzips, or moves provided gtf file in ref_sheet to 
+* correct location to be used in splici generation
+*/
 process process_gtf {
     tag "process_gtf:$reference"
 
@@ -269,19 +275,19 @@ process process_gtf {
         abs_gtf = file("$gtf")
         target = ref_path.toRealPath() + "/genes/genes.gtf"
         target = target.toString()
-        if (gtf.substring(0,4).equals("http") && gtf.contains(".tar")) { //gtf is remote tarball
+        if (gtf.length() > 3 && gtf.substring(0,4).equals("http") && gtf.contains(".tar")) { //gtf is remote tarball
             //download and untar
             """
             mkdir -p $ref_path/genes/
             wget -qO- $gtf | tar xzf - --strip-components=1 -C $ref_path/genes/genes.gtf
             """
-        } else if (gtf.substring(0,4).equals("http") && gtf.contains(".gz")) { //gtf is remote gzip
+        } else if (gtf.length() > 3 && gtf.substring(0,4).equals("http") && gtf.contains(".gz")) { //gtf is remote gzip
             //download and unzip
             """
             mkdir -p $ref_path/genes/
             wget -qO- $gtf | gunzip -c > $ref_path/genes/genes.gtf
             """
-        }  else if (gtf.substring(0,4).equals("http")) { //gtf is remote
+        }  else if (gtf.length() > 3 && gtf.substring(0,4).equals("http")) { //gtf is remote
             //download and move
             """
             mkdir -p $ref_path/genes
@@ -306,8 +312,7 @@ process process_gtf {
                 mkdir -p $ref_path/genes
                 cp $gtf $ref_path/genes/genes.gtf
                 """
-            } else {
-                print("GTF in correct location for $reference")
+            } else { //file exactly where it needs to be
                 """
 
                 """
