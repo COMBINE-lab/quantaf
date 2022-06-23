@@ -102,8 +102,9 @@ process get_splici {
         emit: splici
 
     script:
+        
         """
-        pyroe make-splici $fasta $gtf ${params.read_len} splici_$reference
+        pyroe make-splici $ref_path/fasta/genome.fa $ref_path/genes/genes.gtf ${params.read_len} splici_$reference
         rm -rf ${ref_path}/
         """
     stub:
@@ -166,132 +167,149 @@ process standardize_files {
         tuple val(reference), path(ref_path), val(fasta), val(gtf),
         emit: standardized_files_data
     script:
-        File abs_fasta = new File("$fasta") //absolute path to given fasta
-        File rel_fasta = new File("${projectDir}/${fasta}") //path relative to project dir given for fasta
-        File ref_fasta = new File("${ref_path}${fasta}")  //path relative to reference directory given for fasta
-        File abs_gtf = new File(gtf) //absolute path to given gtf
-        File rel_gtf= new File("${projectDir}/${gtf}") //path relative to project dir given for gtf
-        File ref_gtf = new File("${ref_path}${gtf}")  //path relative to reference directory given for gtf    
-        if (rel_fasta.exists()) {
-            fasta = "${projectDir}/${fasta}"
-        } else if (ref_fasta.exists()) {
-            fasta = "${ref_path}${fasta}"
-        } else {
-            //do nothing for now
+        if(!fasta.substring(0,4).equals("http")) { //fasta is not a url, and is a file
+            ref_fasta = file(ref_path.toRealPath() + "/$fasta") //fasta is within given reference path
+            rel_fasta = file("${projectDir}/${fasta}") //fasta is relative to project directory
+            abs_fasta = file("$fasta") //fasta is absolute path
+            if (ref_fasta.exists()) { //fasta exisits within given reference path
+                fasta = ref_fasta.toRealPath()
+            } else if (rel_fasta.exists()) { //fasta exists relative to project directory
+                fasta = rel_fasta.toRealPath()
+            } else if (abs_fasta.exists()) {
+                //fasta is an absolute path
+            }
         }
-        if (rel_gtf.exists()) {
-            gtf = "${projectDir}/${gtf}"
-        } else if (ref_gtf.exists()) {
-            gtf = "${ref_path}/${gtf}"
+        if(!gtf.substring(0,4).equals("http")) {    
+            ref_gtf = file(ref_path.toRealPath() + "/$gtf")
+            rel_gtf = file("${projectDir}/${gtf}")
+            abs_gtf = file("$gtf")
+            if (ref_gtf.exists()) { //gtf exisits within given reference path
+                gtf = ref_gtf.toRealPath()
+            } else if (rel_gtf.exists()) { //gtf exists relative to project directory
+                gtf = rel_gtf.toRealPath()
+            } else if (abs_gtf.exists()) {
+                //gtf is an absolute path
+            }
         }
         """
-        pwd > ~/out.txt
-        ls -al >> ~/out.txt
-        find >> ~/out.txt
+
         """
         
 }
 
 process process_fasta {
-    tag "process_fasta:$fasta"
+    tag "process_fasta:$reference"
 
     input:
         tuple val(reference), path(ref_path), val(fasta), val(gtf)
     output:
-        tuple val(reference), path(ref_path), path(fasta_p), val(gtf),
+        tuple val(reference), path(ref_path), val(fasta), val(gtf),
         emit: processed_fasta_path    
     script:
-        File abs_fasta = new File(fasta)
-        fasta_p = "$ref_path/fasta/genome.fa"
+        fasta = fasta.toString()
+        abs_fasta = file("$fasta")
+        target = ref_path.toRealPath() + "/fasta/genome.fa"
+        target = target.toString()
         if (fasta.substring(0,4).equals("http") && fasta.contains(".tar")) { //fasta is remote tarball
             //download and untar
             """
-            mkdir $ref_path/fasta/
+            mkdir -p $ref_path/fasta/
             wget -qO- $fasta | tar xzf - --strip-components=1 -C $ref_path/fasta/genome.fa
             """
         } else if (fasta.substring(0,4).equals("http") && fasta.contains(".gz")) { //fasta is remote gzip
             //download and unzip
             """
-            mkdir $ref_path/fasta/
+            mkdir -p $ref_path/fasta/
             wget -qO- $fasta | gunzip -c > $ref_path/fasta/genome.fa
             """
         }  else if (fasta.substring(0,4).equals("http")) { //fasta is remote
             //download and move
             """
-            mkdir $ref_path/fasta/
+            mkdir -p $ref_path/fasta/
             wget -qP $fasta $ref_path/fasta/genome.fa
             """
         } else if (abs_fasta.exists()) { //if the path given is an absolute path to a file
             if (fasta.contains(".tar")) { //tarball 
-                //unta
+                //untar
                 """
-                mkdir $ref_path/fasta/
+                mkdir -p $ref_path/fasta/
                 tar -xzf $fasta --strip-components=1 -C $ref_path/fasta/genome.fa
                 """
             } else if (fasta.contains(".gz")) { //gzip
                 //gunzip
                 """
-                mkdir $ref_path/fasta/
+                mkdir -p $ref_path/fasta/
                 gunzip $fasta -c > $ref_path/fasta/genome.fa
                 """
-            } else { //.fa
+            } else if(!fasta.equals(target)){ //.fa and its not already where it needs to be
                 //move file to location exisiting
                 """
-                mkdir $ref_path/fasta/
-                cp $fasta $ref_path/fasta/genome.fa
+                mkdir -p $ref_path/fasta
+                cp $fasta $target
+                """
+            } else {
+                print("Fasta file in correct location for $reference")
+                """
+
                 """
             }
         }
 }
 
 process process_gtf {
-    tag "process_gtf:$gtf"
+    tag "process_gtf:$reference"
 
     input:
-        tuple val(reference), path(ref_path), path(fasta), val(gtf)
+        tuple val(reference), path(ref_path), val(fasta), val(gtf)
     output:
-        tuple val(reference), path(ref_path), path(fasta_p), path(gtf_p),
+        tuple val(reference), path(ref_path), val(fasta), val(gtf),
         emit: processed_gtf_path    
     script:
-        File abs_gtf = new File(gtf)
-        fasta_p = fasta
-        gtf_p = "$ref_path/genes/genes.gtf"
+        gtf = gtf.toString()
+        abs_gtf = file("$gtf")
+        target = ref_path.toRealPath() + "/genes/genes.gtf"
+        target = target.toString()
         if (gtf.substring(0,4).equals("http") && gtf.contains(".tar")) { //gtf is remote tarball
             //download and untar
             """
-            mkdir $ref_path/genes/
+            mkdir -p $ref_path/genes/
             wget -qO- $gtf | tar xzf - --strip-components=1 -C $ref_path/genes/genes.gtf
             """
         } else if (gtf.substring(0,4).equals("http") && gtf.contains(".gz")) { //gtf is remote gzip
             //download and unzip
             """
-            mkdir $ref_path/genes/
+            mkdir -p $ref_path/genes/
             wget -qO- $gtf | gunzip -c > $ref_path/genes/genes.gtf
             """
-        }  else if (gtf.substring(0,4).equals("http")) { //fasta is remote
+        }  else if (gtf.substring(0,4).equals("http")) { //gtf is remote
             //download and move
             """
-            mkdir $ref_path/genes/
+            mkdir -p $ref_path/genes
             wget -qP $gtf $ref_path/genes/genes.gtf
             """
-        } else if (abs_fasta.exists()) { //if the path given is an absolute path to a file
+        } else if (abs_gtf.exists()) { //if the path given is an absolute path to a file
             if (gtf.contains(".tar")) { //tarball 
                 //untar
                 """
-                mkdir $ref_path/genes/
+                mkdir -p $ref_path/genes/
                 tar -xzf $gtf --strip-components=1 -C $ref_path/genes/genes.gtf
                 """
-            } else if (fasta.contains(".gz")) { //gzip
+            } else if (gtf.contains(".gz")) { //gzip
                 //gunzip
                 """
-                mkdir $ref_path/genes/
+                mkdir -p $ref_path/genes/
                 gunzip $gtf -c > $ref_path/genes/genes.gtf
                 """
-            } else { //.fa
+            } else if(!gtf.equals(target)){ //.gtf and its not already where it needs to be
                 //move file to location exisiting
                 """
-                mkdir $ref_path/genes/
+                mkdir -p $ref_path/genes
                 cp $gtf $ref_path/genes/genes.gtf
+                """
+            } else {
+                print("GTF in correct location for $reference")
+                """
+
                 """
             }
         }
