@@ -167,8 +167,11 @@ process standardize_files {
         emit: standardized_files_data
     script:
         if(fasta.length () > 3 && !fasta.substring(0,4).equals("http")) { //fasta is not a url, and is a file
-            ref_fasta = file(ref_path.toRealPath() + "/$fasta") //fasta is within given reference path
-            rel_fasta = file("${projectDir}/${fasta}") //fasta is relative to project directory
+            if(!fasta.substring(0,1).equals("/")) {
+                fasta = "/" + "$fasta"
+            }
+            ref_fasta = file(ref_path.toRealPath() + "$fasta") //fasta is within given reference path
+            rel_fasta = file("${projectDir}${fasta}") //fasta is relative to project directory
             abs_fasta = file("$fasta") //fasta is absolute path
             if (ref_fasta.exists()) { //fasta exisits within given reference path
                 fasta = ref_fasta.toRealPath()
@@ -179,8 +182,11 @@ process standardize_files {
             }
         }
         if(gtf.length () > 3 && !gtf.substring(0,4).equals("http")) {   
-            ref_gtf = file(ref_path.toRealPath() + "/$gtf")
-            rel_gtf = file("${projectDir}/${gtf}")
+            if(!gtf.substring(0,1).equals("/")) {
+                gtf = "/" + "$gtf"
+            }
+            ref_gtf = file(ref_path.toRealPath() + "$gtf")
+            rel_gtf = file("${projectDir}${gtf}")
             abs_gtf = file("$gtf")
             if (ref_gtf.exists()) { //gtf exisits within given reference path
                 gtf = ref_gtf.toRealPath()
