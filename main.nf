@@ -55,4 +55,5 @@ workflow {
             ))
       salmon_map(data) 
       af(salmon_map.out, Channel.value("unfilt"))
+      af.out.view()
 }
