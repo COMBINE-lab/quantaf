@@ -258,7 +258,7 @@ process process_fasta {
                 """
             } else { //file exactly where it needs to be
                 """
-
+                # this means something is wrong with input
                 """
             }
         }
@@ -323,6 +323,10 @@ process process_gtf {
 
                 """
             }
+        } else {
+            """
+            # this means something is wrong with input
+            """
         }
 }
 
