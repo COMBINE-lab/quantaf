@@ -5,6 +5,5 @@ pipeline_trace*
 nf_pipeline*
 work
 *.fa
-*.fa.gz
 *.gtf
 *.gtf.gz
