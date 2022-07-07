@@ -2,5 +2,7 @@ nextflow
 .nextflow
 .nextflow.*
 pipeline_trace*
-nf_pipeline
+nf_pipeline*
 work
+*.fa
+*.gtf
