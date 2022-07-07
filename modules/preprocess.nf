@@ -100,7 +100,6 @@ process get_splici {
         emit: splici
 
     script:
-        
         """
         pyroe make-splici $ref_path/fasta/genome.fa $ref_path/genes/genes.gtf ${params.read_len} splici_$reference
         rm -rf ${ref_path}/
@@ -206,8 +205,8 @@ process standardize_files {
 * Downloads, unzips, or moves provided fasta file in ref_sheet to 
 * correct location to be used in splici generation
 */
-process process_fasta {
-    tag "process_fasta:$reference"
+process standard_fasta {
+    tag "standard_fasta:$reference"
 
     input:
         tuple val(reference), path(ref_path), val(fasta), val(gtf)
@@ -268,8 +267,8 @@ process process_fasta {
 * Downloads, unzips, or moves provided gtf file in ref_sheet to 
 * correct location to be used in splici generation
 */
-process process_gtf {
-    tag "process_gtf:$reference"
+process standard_gtf {
+    tag "standard_gtf:$reference"
 
     input:
         tuple val(reference), path(ref_path), val(fasta), val(gtf)
@@ -356,10 +355,10 @@ workflow preprocess {
     process_ref_data(ref_sheet)
     standardize_files(process_ref_data.out)
 
-    process_fasta(standardize_files.out)
-    process_gtf(process_fasta.out)
-
-    get_splici(process_gtf.out)         
+    standard_fasta(standardize_files.out)
+    standard_gtf(standard_fasta.out)
+    
+    get_splici(standard_gtf.out)         
     salmon_index(get_splici.out)
     
     chem_pl = get_permitlist.out.chem_pl
