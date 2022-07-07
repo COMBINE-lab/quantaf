@@ -6,6 +6,6 @@ human-toy-download-gtf-fa	https://umd.box.com/shared/static/7v6mof9emgudmuczc4ln
 human-toy-download-fa-abs-gtf	randommeaninglessfillerstring	https://github.com/njj67229/quantaf/blob/main/genomic_data/fasta/genome.fa.gz?raw=true	/cbcbhomes/njacobi/quantaf/genomic_data/genes/genes.gtf
 human-toy-download-gtf-abs-fa	randommeaninglessfillerstring	/cbcbhomes/njacobi/quantaf/genomic_data/fasta/genome.fa	https://github.com/njj67229/quantaf/blob/main/genomic_data/genes/genes.gtf.gz?raw=true
 human-toy-download-fa-abs-gtf-gz	randommeaninglessfillerstring	https://github.com/njj67229/quantaf/blob/main/genomic_data/fasta/genome.fa.gz?raw=true	/cbcbhomes/njacobi/quantaf/genomic_data/genes/genes.gtf.gz
-human-toy-download-gtf-abs-fa-gz	randommeaninglessfillerstring	/cbcbhomes/njacobi/quantaf/genomic_data/fasta/genome.fa	https://github.com/njj67229/quantaf/blob/main/genomic_data/genes/genes.gtf.gz?raw=true
+human-toy-download-gtf-abs-fa-gz	randommeaninglessfillerstring	/cbcbhomes/njacobi/quantaf/genomic_data/fasta/genome.fa.gz	https://github.com/njj67229/quantaf/blob/main/genomic_data/genes/genes.gtf.gz?raw=true
 human-toy-rel-gtf-rel-fa	randommeaninglessfillerstring	/genomic_data/fasta/genome.fa	/genomic_data/genes/genes.gtf
 human-toy-abs-gtf-abs-fa	randommeaninglessfillerstring	/cbcbhomes/njacobi/quantaf/genomic_data/fasta/genome.fa	/cbcbhomes/njacobi/quantaf/genomic_data/genes/genes.gtf
