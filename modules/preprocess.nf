@@ -79,43 +79,6 @@ process salmon_index {
         """
 }
 
-
-/*
-* based on the provided and processed reference sheet, and make splici for them 
-* NOTE: 
-* 1. require a tsv named ref_sheet.tsv in the ${bench_dir}/input_files
-* 2. any combination of local and remote, zipped/unzipped should be accepted
-*/
-process get_splici {
-    tag "get_splici:${reference}"
-    // conda "bioconda::bedtools bioconda::pyroe"
-
-    input:
-        tuple val(reference), path(ref_path), path(fasta), path(gtf)
-        
-    output:
-        tuple val(reference),
-        path("splici_$reference/splici_fl${params.read_len - 5}.fa"), 
-        path("splici_$reference/splici_fl${params.read_len - 5}_t2g_3col.tsv"), 
-        emit: splici
-
-    script:
-        """
-        pyroe make-splici $ref_path/fasta/genome.fa $ref_path/genes/genes.gtf ${params.read_len} splici_$reference
-        rm -rf ${ref_path}/
-        """
-    stub:
-        """
-            mkdir reference_$reference
-            mkdir reference_$reference/genes && touch reference_$reference/genes/genes.gtf
-            mkdir reference_$reference/fasta && touch reference_$reference/fasta/genome.fa
-            mkdir splici_$reference
-            touch splici_$reference/splici_fl${params.read_len-5}.fa
-            touch splici_$reference/splici_fl${params.read_len-5}_t2g_3col.tsv
-            rm -rf reference_$reference
-        """
-}
-
 /*
 * Process sets up reference data based on the provided reference link or local path,
 * which could contain data for both gtf and fasta files, just one, or neither if user 
@@ -329,6 +292,71 @@ process standard_gtf {
         }
 }
 
+process prep_commands {
+    tag "prep_commands:${reference}"
+
+    input:
+        tuple val(reference), path(ref_path), val(fasta), val(gtf)
+    output:
+        tuple val(reference), path(ref_path), val(fasta), val(gtf), val(pyroe_command_args), val(file_name)
+    script:
+        pyroe_command_args = ""
+        file_name = "splici"
+        if (!params.pyroe.filename_pref.equals("")) {
+            file_name = params.pyroe.filename_pref
+            pyroe_command_args += " --filename-prefix $params.pyroe.filename_pref"
+        }
+        if (!params.pyroe.bt_path.equals("")) {
+            pyroe_command_args += " --bt-path $params.pyroe.bt_path"
+        }
+        if (params.pyroe.dedup_seqs.equalsIgnoreCase("True") || params.pyroe.dedup_seqs.equalsIgnoreCase("T")) {
+            pyroe_command_args += " --dedup-seqs"
+        }
+        if (params.pyroe.no_flanking_merge.equalsIgnoreCase("True") || params.pyroe.no_flanking_merge.equalsIgnoreCase("T")) {
+            pyroe_command_args += " --no-flanking-merge"
+        }
+        """
+
+        """
+}   
+
+/*
+* based on the provided and processed reference sheet, and make splici for them 
+* NOTE: 
+* 1. require a tsv named ref_sheet.tsv in the ${bench_dir}/input_files
+* 2. any combination of local and remote, zipped/unzipped should be accepted
+*/
+process get_splici {
+    tag "get_splici:${reference}"
+    // conda "bioconda::bedtools bioconda::pyroe"
+
+    input:
+        tuple val(reference), path(ref_path), path(fasta), path(gtf), val(args), val(file_name)
+        
+    output:
+        tuple val(reference),
+        path("splici_$reference/${file_name}_fl${params.pyroe.read_len - params.pyroe.trim_length}.fa"), 
+        path("splici_$reference/${file_name}_fl${params.pyroe.read_len - params.pyroe.trim_length}_t2g_3col.tsv"), 
+        emit: splici
+
+    script:
+        """
+        pyroe make-splici $ref_path/fasta/genome.fa $ref_path/genes/genes.gtf ${params.pyroe.read_len} splici_$reference${args}
+        rm -rf ${ref_path}/
+        """
+    stub:
+        """
+            mkdir reference_$reference
+            mkdir reference_$reference/genes && touch reference_$reference/genes/genes.gtf
+            mkdir reference_$reference/fasta && touch reference_$reference/fasta/genome.fa
+            mkdir splici_$reference
+            touch splici_$reference/${file_name}${params.pyroe.read_len - params.pyroe.trim_length}.fa
+            touch splici_$reference/${file_name}${params.pyroe.read_len - params.pyroe.trim_length}_t2g_3col.tsv
+            rm -rf reference_$reference
+        """
+}
+
+
 /*
 * This workflow take a ref_sheet.tsv and a pl_sheet.tsv file 
 * in the ${bench_dir}/input_files
@@ -357,8 +385,11 @@ workflow preprocess {
 
     standard_fasta(standardize_files.out)
     standard_gtf(standard_fasta.out)
+    //prepare commands for pyroe based on user input in config sheet
+    prep_commands(standard_gtf.out)
+
+    get_splici(prep_commands.out) 
     
-    get_splici(standard_gtf.out)         
     salmon_index(get_splici.out)
     
     chem_pl = get_permitlist.out.chem_pl
