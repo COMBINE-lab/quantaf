@@ -97,20 +97,28 @@ process process_ref_data {
     script:
         ref_path = "reference_${reference}/"
     if (ref_data.length () > 3 && ref_data.substring(0,4).equals("http")) { //check if ref_data is https or local
-            """
-            mkdir $ref_path
-            wget -qO- $ref_data | tar xzf - --strip-components=1 -C $ref_path
-            """
+        """
+        mkdir $ref_path
+        wget -qO- $ref_data | tar xzf - --strip-components=1 -C $ref_path
+        """
     } else if(ref_data.contains("gz") || ref_data.contains("tar")) { //if its local see if its a tarball or if its just fasta and gtf
         """
         mkdir $ref_path
-        tar xzf - --strip-components=1 -C $ref_path
+        tar xzf $ref_data --strip-components=1 -C $ref_path
         """
     } else {
-        """
-        mkdir $ref_path
-        """
-        //cp -rf $ref_data $ref_path/    
+        ref_data_path = file(ref_data)
+        if(ref_data_path.exists()) {
+            """
+            mkdir $ref_path
+            cp -a $ref_data/. $ref_path
+            """
+        } else {
+            """
+            mkdir $ref_path
+            """
+        }
+        
     }
 }
 
