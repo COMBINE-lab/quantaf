@@ -55,22 +55,26 @@ process standardize_salmon_files {
         path t2g_path, emit: t2g_path
 
     script:
+        //list of valid chem options, including chromiumv2 and v3 in case user types full name over v2 or v3
+        valid_chems = ["dropseq", "v2", "v3", "chromiumV3", "chromium", "gemcode", 
+        "citeseq", "celseq", "celseq2", "splitseqV1", "splitseqV2", 
+        "quartzseq2", "sciseq3"]
+        if(!valid_chems.contains(chemistry)) {
+            error "Invalid chemistry option: " + chemistry
+        }
         if(fastq_file.length () > 3 && !fastq_file.substring(0,4).equals("http")) { //fastq is not a url, and is a file
             if(!fastq_file.substring(0,1).equals("/")) {
                 fastq_file = "/" + "$fastq_file"
             }
             rel_fastq = file("${projectDir}${fastq_file}") //fastq is relative to project directory
             abs_fastq = file("$fastq_file") //fastq is absolute path
-            print(rel_fastq)
             if (rel_fastq.exists()) { //fastq exists relative to project directory
                 fastq_file = rel_fastq.toRealPath()
-                print("HERe")
             } else if (!abs_fastq.exists()) {
                 error "Could not find referenced fastq file."
             }
         }
         //todo csvs for multiplex and feature barcodes?
-
         """
 
         """

@@ -54,6 +54,10 @@ workflow {
                               it[0][1] // t2g_path
             ))
       salmon_map(data) 
-      af(salmon_map.out, Channel.value("unfilt"))
+      if(!salmon_map.out[0].equals("v2") && !salmon_map.out[0].equals("v3")) {
+            af(salmon_map.out, Channel.value("unfilt"))
+      } else {
+            af(salmon_map.out, Channel.value("knee"))
+      }
       af.out.view()
 }
