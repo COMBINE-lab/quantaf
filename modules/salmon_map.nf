@@ -125,8 +125,8 @@ process salmon_map_rad {
         chemistry_salmon = salmon_chem_flag(chemistry)
 
         """
-            reads1="\$(find -L ${fastq_dir_path} -name "*_R1_*" -type f | xargs | sort | awk '{print \$0}')"
-            reads2="\$(find -L ${fastq_dir_path} -name "*_R2_*" -type f | xargs | sort | awk '{print \$0}')"
+            reads1="$(find -L ${fastq_dir} -name "*_R1_*" -type f | sort | awk '{$1=$1;print}' | paste -sd" ")"
+            reads2="$(find -L ${fastq_dir} -name "*_R2_*" -type f | sort | awk '{$1=$1;print}' | paste -sd" ")"
             ${params.timecmd} -v -o ${fastq_MD5sum}_log_map_sketch.time \
             salmon alevin -i ${index_dir_path} -l ISR \
             -1 \${reads1} \
@@ -149,8 +149,8 @@ process salmon_map_rad {
             touch ${fastq_MD5sum}_fastqs/read_S1_L001_R2_001.fastq.gz
             echo "\$(ls ${fastq_MD5sum}_fastqs)"
 
-            reads1="\$(ls ${fastq_MD5sum}_fastqs | sort | awk -v p=${fastq_MD5sum}_fastqs '{print p"/"\$0}' | grep "_R1_")"
-            reads2="\$(ls ${fastq_MD5sum}_fastqs | sort | awk -v p=${fastq_MD5sum}_fastqs '{print p"/"\$0}' | grep "_R2_")"
+            reads1="$(find -L ${fastq_dir} -name "*_R1_*" -type f | sort | awk '{$1=$1;print}' | paste -sd" ")"
+            reads2="$(find -L ${fastq_dir} -name "*_R2_*" -type f | sort | awk '{$1=$1;print}' | paste -sd" ")"
 
             echo \$reads1
             echo \$reads2
