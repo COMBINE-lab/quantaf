@@ -1,3 +1,4 @@
+import groovy.io.FileType
 
 /*
 * based on the provided reference and link of permit list, 
@@ -14,8 +15,7 @@ process get_permitlist {
         tuple val(chemistry), file(ofile_name), emit: chem_pl
 
     script:
-        ofile_name = link.getName()
-
+        ofile_name = link.getName()    
     if (link.getExtension() != 'txt') {
         ofile_name = link.getBaseName()
         """
@@ -30,49 +30,6 @@ process get_permitlist {
 
 // turn the tuple to a map so that we can query the value by key
 // permitlist = permitlist.flatMap { ["${it[0]}" : it[1]] }
-
-
-
-/*
-* based on the provided reference and link of cellranger references, 
-* download and uncompress on the fly, and make splici for them 
-* NOTE: 
-* 1. require a tsv named ref_sheet.tsv in the ${bench_dir}/input_files
-* 2. only work for pre-built cellranger references, like humand2020A and mm10-2020A
-* 3. if other reference needed, this process has to be expanded to 
-*    enable cellranger to make reference 
-*/
-process get_splici {
-    tag "get_permitlist:${reference}"
-    // conda "bioconda::bedtools bioconda::pyroe"
-
-    input:
-        tuple val(reference), val(link)
-        
-    output:
-        tuple val(reference),
-        path("splici_$reference/splici_fl${params.read_len - 5}.fa"), 
-        path("splici_$reference/splici_fl${params.read_len - 5}_t2g_3col.tsv"), 
-        emit: splici
-
-    script:
-        """
-        mkdir reference_$reference && wget -qO- ${link} | tar xzf - --strip-components=1 -C reference_$reference
-        pyroe make-splici reference_$reference/fasta/genome.fa reference_$reference/genes/genes.gtf ${params.read_len} splici_$reference
-        rm -rf reference_$reference
-        """
-    stub:
-        """
-            mkdir reference_$reference
-            mkdir reference_$reference/genes && touch reference_$reference/genes/genes.gtf
-            mkdir reference_$reference/fasta && touch reference_$reference/fasta/genome.fa
-
-            mkdir splici_$reference
-            touch splici_$reference/splici_fl${params.read_len-5}.fa
-            touch splici_$reference/splici_fl${params.read_len-5}_t2g_3col.tsv
-            rm -rf reference_$reference
-        """
-}
 
 
 /*
@@ -123,6 +80,292 @@ process salmon_index {
 }
 
 /*
+* Process sets up reference data based on the provided reference link or local path,
+* which could contain data for both gtf and fasta files, just one, or neither if user 
+* provides seperate paths or remote links to both files
+*/
+
+process process_ref_data {
+    tag "ref:${reference}"
+
+    input: 
+        tuple val(reference), val(ref_data), val(fasta), val(gtf)
+    output:
+        tuple val(reference), path(ref_path), val(fasta), val(gtf),
+        emit: processed_ref_data        
+
+    script:
+        ref_path = "reference_${reference}/"
+    if (ref_data.length () > 3 && ref_data.substring(0,4).equals("http")) { //check if ref_data is https or local
+        """
+        mkdir $ref_path
+        wget -qO- $ref_data | tar xzf - --strip-components=1 -C $ref_path
+        """
+    } else if(ref_data.contains("gz") || ref_data.contains("tar")) { //if its local see if its a tarball or if its just fasta and gtf
+        """
+        mkdir $ref_path
+        tar xzf $ref_data --strip-components=1 -C $ref_path
+        """
+    } else {
+        ref_data_path = file(ref_data)
+        if(ref_data_path.exists()) {
+            """
+            mkdir $ref_path
+            cp -a $ref_data/. $ref_path
+            """
+        } else {
+            """
+            mkdir $ref_path
+            """
+        }
+        
+    }
+}
+
+/*
+* Process sets up gtf and fasta data based on the provided input in ref_sheet;
+* if it is not a link, standardizes it to a absolute path for future use
+*/
+
+process standardize_files {
+    tag "standardize_files:$reference"
+
+    input: 
+        tuple val(reference), path(ref_path), val(fasta), val(gtf)
+    output:
+        tuple val(reference), path(ref_path), val(fasta), val(gtf),
+        emit: standardized_files_data
+    script:
+        if(fasta.length () > 3 && !fasta.substring(0,4).equals("http")) { //fasta is not a url, and is a file
+            if(!fasta.substring(0,1).equals("/")) {
+                fasta = "/" + "$fasta"
+            }
+            ref_fasta = file(ref_path.toRealPath() + "$fasta") //fasta is within given reference path
+            rel_fasta = file("${projectDir}${fasta}") //fasta is relative to project directory
+            abs_fasta = file("$fasta") //fasta is absolute path
+            if (ref_fasta.exists()) { //fasta exisits within given reference path
+                fasta = ref_fasta.toRealPath()
+            } else if (rel_fasta.exists()) { //fasta exists relative to project directory
+                fasta = rel_fasta.toRealPath()
+            } else if (abs_fasta.exists()) {
+                //fasta is an absolute path
+            }
+        }
+        if(gtf.length () > 3 && !gtf.substring(0,4).equals("http")) {   
+            if(!gtf.substring(0,1).equals("/")) {
+                gtf = "/" + "$gtf"
+            }
+            ref_gtf = file(ref_path.toRealPath() + "$gtf")
+            rel_gtf = file("${projectDir}${gtf}")
+            abs_gtf = file("$gtf")
+            if (ref_gtf.exists()) { //gtf exisits within given reference path
+                gtf = ref_gtf.toRealPath()
+            } else if (rel_gtf.exists()) { //gtf exists relative to project directory
+                gtf = rel_gtf.toRealPath()
+            } else if (abs_gtf.exists()) {
+                //gtf is an absolute path
+            }
+        }
+        """
+
+        """
+        
+}
+
+/*
+* Downloads, unzips, or moves provided fasta file in ref_sheet to 
+* correct location to be used in splici generation
+*/
+process standard_fasta {
+    tag "standard_fasta:$reference"
+
+    input:
+        tuple val(reference), path(ref_path), val(fasta), val(gtf)
+    output:
+        tuple val(reference), path(ref_path), val(fasta), val(gtf),
+        emit: processed_fasta_path    
+    script:
+        fasta = fasta.toString()
+        abs_fasta = file("$fasta")
+        target = ref_path.toRealPath() + "/fasta/genome.fa"
+        target = target.toString()
+        if (fasta.length () > 3 && fasta.substring(0,4).equals("http") && fasta.contains(".tar")) { //fasta is remote tarball
+            //download and untar
+            """
+            mkdir -p $ref_path/fasta/
+            wget -qO- $fasta | tar xzf - --strip-components=1 -C $ref_path/fasta/genome.fa
+            """
+        } else if (fasta.length () > 3 && fasta.substring(0,4).equals("http") && fasta.contains(".gz")) { //fasta is remote gzip
+            //download and unzip
+            """
+            mkdir -p $ref_path/fasta/
+            wget -qO- $fasta | gunzip -c > $ref_path/fasta/genome.fa
+            """
+        }  else if (fasta.length () > 3 && fasta.substring(0,4).equals("http")) { //fasta is remote
+            //download and move
+            """
+            mkdir -p $ref_path/fasta/
+            wget -qP $fasta $ref_path/fasta/genome.fa
+            """
+        } else if (abs_fasta.exists()) { //if the path given is an absolute path to a file
+            if (fasta.contains(".tar")) { //tarball 
+                //untar
+                """
+                mkdir -p $ref_path/fasta/
+                tar -xzf $fasta --strip-components=1 -C $ref_path/fasta/genome.fa
+                """
+            } else if (fasta.contains(".gz")) { //gzip
+                //gunzip
+                """
+                mkdir -p $ref_path/fasta/
+                gunzip $fasta -c > $ref_path/fasta/genome.fa
+                """
+            } else if(!fasta.equals(target)){ //.fa and its not already where it needs to be
+                //move file to location exisiting
+                """
+                mkdir -p $ref_path/fasta
+                cp $fasta $target
+                """
+            } else { //file exactly where it needs to be
+                """
+                # this means something is wrong with input
+                """
+            }
+        }
+}
+
+/*
+* Downloads, unzips, or moves provided gtf file in ref_sheet to 
+* correct location to be used in splici generation
+*/
+process standard_gtf {
+    tag "standard_gtf:$reference"
+
+    input:
+        tuple val(reference), path(ref_path), val(fasta), val(gtf)
+    output:
+        tuple val(reference), path(ref_path), val(fasta), val(gtf),
+        emit: processed_gtf_path    
+    script:
+        gtf = gtf.toString()
+        abs_gtf = file("$gtf")
+        target = ref_path.toRealPath() + "/genes/genes.gtf"
+        target = target.toString()
+        if (gtf.length() > 3 && gtf.substring(0,4).equals("http") && gtf.contains(".tar")) { //gtf is remote tarball
+            //download and untar
+            """
+            mkdir -p $ref_path/genes/
+            wget -qO- $gtf | tar xzf - --strip-components=1 -C $ref_path/genes/genes.gtf
+            """
+        } else if (gtf.length() > 3 && gtf.substring(0,4).equals("http") && gtf.contains(".gz")) { //gtf is remote gzip
+            //download and unzip
+            """
+            mkdir -p $ref_path/genes/
+            wget -qO- $gtf | gunzip -c > $ref_path/genes/genes.gtf
+            """
+        }  else if (gtf.length() > 3 && gtf.substring(0,4).equals("http")) { //gtf is remote
+            //download and move
+            """
+            mkdir -p $ref_path/genes
+            wget -qP $gtf $ref_path/genes/genes.gtf
+            """
+        } else if (abs_gtf.exists()) { //if the path given is an absolute path to a file
+            if (gtf.contains(".tar")) { //tarball 
+                //untar
+                """
+                mkdir -p $ref_path/genes/
+                tar -xzf $gtf --strip-components=1 -C $ref_path/genes/genes.gtf
+                """
+            } else if (gtf.contains(".gz")) { //gzip
+                //gunzip
+                """
+                mkdir -p $ref_path/genes/
+                gunzip $gtf -c > $ref_path/genes/genes.gtf
+                """
+            } else if(!gtf.equals(target)){ //.gtf and its not already where it needs to be
+                //move file to location exisiting
+                """
+                mkdir -p $ref_path/genes
+                cp $gtf $ref_path/genes/genes.gtf
+                """
+            } else { //file exactly where it needs to be
+                """
+
+                """
+            }
+        } else {
+            """
+            # this means something is wrong with input
+            """
+        }
+}
+
+process prep_commands {
+    tag "prep_commands:${reference}"
+
+    input:
+        tuple val(reference), path(ref_path), val(fasta), val(gtf)
+    output:
+        tuple val(reference), path(ref_path), val(fasta), val(gtf), val(pyroe_command_args), val(file_name)
+    script:
+        pyroe_command_args = ""
+        file_name = "splici"
+        if (!params.pyroe.filename_pref.equals("")) {
+            file_name = params.pyroe.filename_pref
+            pyroe_command_args += " --filename-prefix $params.pyroe.filename_pref"
+        }
+        if (!params.pyroe.bt_path.equals("")) {
+            pyroe_command_args += " --bt-path $params.pyroe.bt_path"
+        }
+        if (params.pyroe.dedup_seqs.equalsIgnoreCase("True") || params.pyroe.dedup_seqs.equalsIgnoreCase("T")) {
+            pyroe_command_args += " --dedup-seqs"
+        }
+        if (params.pyroe.no_flanking_merge.equalsIgnoreCase("True") || params.pyroe.no_flanking_merge.equalsIgnoreCase("T")) {
+            pyroe_command_args += " --no-flanking-merge"
+        }
+        """
+
+        """
+}   
+
+/*
+* based on the provided and processed reference sheet, and make splici for them 
+* NOTE: 
+* 1. require a tsv named ref_sheet.tsv in the ${bench_dir}/input_files
+* 2. any combination of local and remote, zipped/unzipped should be accepted
+*/
+process get_splici {
+    tag "get_splici:${reference}"
+    // conda "bioconda::bedtools bioconda::pyroe"
+
+    input:
+        tuple val(reference), path(ref_path), path(fasta), path(gtf), val(args), val(file_name)
+        
+    output:
+        tuple val(reference),
+        path("splici_$reference/${file_name}_fl${params.pyroe.read_len - params.pyroe.trim_length}.fa"), 
+        path("splici_$reference/${file_name}_fl${params.pyroe.read_len - params.pyroe.trim_length}_t2g_3col.tsv"), 
+        emit: splici
+
+    script:
+        """
+        pyroe make-splici $ref_path/fasta/genome.fa $ref_path/genes/genes.gtf ${params.pyroe.read_len} splici_$reference${args}
+        rm -rf ${ref_path}/
+        """
+    stub:
+        """
+            mkdir reference_$reference
+            mkdir reference_$reference/genes && touch reference_$reference/genes/genes.gtf
+            mkdir reference_$reference/fasta && touch reference_$reference/fasta/genome.fa
+            mkdir splici_$reference
+            touch splici_$reference/${file_name}${params.pyroe.read_len - params.pyroe.trim_length}.fa
+            touch splici_$reference/${file_name}${params.pyroe.read_len - params.pyroe.trim_length}_t2g_3col.tsv
+            rm -rf reference_$reference
+        """
+}
+
+
+/*
 * This workflow take a ref_sheet.tsv and a pl_sheet.tsv file 
 * in the ${bench_dir}/input_files
 * it prepares the permiit list and splici refernece for alevin-fry
@@ -134,23 +377,31 @@ workflow preprocess {
     pl_sheet = Channel
             .fromPath(params.input_sheets.permitlist)
             .splitCsv(header:true, sep:"\t", strip: true)
-            .map{ row-> tuple(row.reference,
+            .map{ row-> tuple(row.chemistry,
                             row.link)
             }
     get_permitlist(pl_sheet)
-
+    
     ref_sheet = Channel
                 .fromPath(params.input_sheets.reference)
                 .splitCsv(header:true, sep:"\t", strip: true)
                 .map{ row-> tuple(row.reference,
-                                row.link)
+                                row.ref_data, row.fasta, row.gtf)
                 }
-    get_splici(ref_sheet)
+    process_ref_data(ref_sheet)
+    standardize_files(process_ref_data.out)
+
+    standard_fasta(standardize_files.out)
+    standard_gtf(standard_fasta.out)
+    //prepare commands for pyroe based on user input in config sheet
+    prep_commands(standard_gtf.out)
+
+    get_splici(prep_commands.out) 
+    
     salmon_index(get_splici.out)
     
     chem_pl = get_permitlist.out.chem_pl
     ref_t2g_index = salmon_index.out.ref_t2g_index
-
     emit:
         chem_pl
         ref_t2g_index

@@ -3,14 +3,14 @@ workflow salmon_map {
         samp 
 
     main: 
-        download_fastq(samp) | salmon_map_rad
+        standardize_salmon_files(samp) | download_fastq | salmon_map_rad
 
     emit:
         salmon_map_rad.out.chemistry
         salmon_map_rad.out.reference
         salmon_map_rad.out.dataset_name
         salmon_map_rad.out.dataset_url
-        salmon_map_rad.out.fastq_url
+        salmon_map_rad.out.fastq_file
         salmon_map_rad.out.fastq_MD5sum
         salmon_map_rad.out.delete_fastq
         salmon_map_rad.out.feature_barcode_csv_url
@@ -21,6 +21,64 @@ workflow salmon_map {
         salmon_map_rad.out.map_rad_path
         salmon_map_rad.out.unmapped_file_path
 
+}
+
+process standardize_salmon_files {
+    tag "standardize_salmon_files:${dataset_name}"
+    errorStrategy 'terminate'
+    
+    input:
+        tuple val(chemistry), 
+            val(reference), 
+            val(dataset_name), 
+            val(dataset_url), 
+            val(fastq_file), 
+            val(fastq_MD5sum), 
+            val(delete_fastq), 
+            val(feature_barcode_csv_url), 
+            val(multiplexing_library_csv_url),
+            path(index_dir_path), 
+            path(pl_path), 
+            path(t2g_path)
+    output:
+        val chemistry, emit: chemistry
+        val reference, emit: reference
+        val dataset_name, emit: dataset_name
+        val dataset_url, emit: dataset_url
+        val fastq_file, emit:fastq_file
+        val fastq_MD5sum, emit: fastq_MD5sum
+        val delete_fastq, emit: delete_fastq
+        val feature_barcode_csv_url, emit: feature_barcode_csv_url
+        val multiplexing_library_csv_url, emit: multiplexing_library_csv_url
+        path index_dir_path, emit: index_dir_path
+        path pl_path, emit: pl_path
+        path t2g_path, emit: t2g_path
+
+    script:
+        //list of valid chem options, including chromiumv2 and v3 in case user types full name over v2 or v3
+        valid_chems = ["dropseq", "v2", "v3", "chromiumV3", "chromium", "gemcode", 
+        "citeseq", "celseq", "celseq2", "splitseqV1", "splitseqV2", 
+        "quartzseq2", "sciseq3"]
+        if(!valid_chems.contains(chemistry)) {
+            error "Invalid chemistry option: " + chemistry
+        }
+        if(fastq_file.length () > 3 && !fastq_file.substring(0,4).equals("http")) { //fastq is not a url, and is a file
+            if(!fastq_file.substring(0,1).equals("/")) {
+                fastq_file = "/" + "$fastq_file"
+            }
+            rel_fastq = file("${projectDir}${fastq_file}") //fastq is relative to project directory
+            abs_fastq = file("$fastq_file") //fastq is absolute path
+            if (rel_fastq.exists()) { //fastq exists relative to project directory
+                fastq_file = rel_fastq.toRealPath()
+            } else if (!abs_fastq.exists()) {
+                error "Could not find referenced fastq file."
+            }
+        }
+        //todo csvs for multiplex and feature barcodes?
+        """
+
+        """
+    
 }
 
 /*
@@ -35,25 +93,25 @@ process download_fastq {
     label 'single_threads'
 
     input:
-        tuple val(chemistry), 
-            val(reference), 
-            val(dataset_name), 
-            val(dataset_url), 
-            val(fastq_url), 
-            val(fastq_MD5sum), 
-            val(delete_fastq), 
-            val(feature_barcode_csv_url), 
-            val(multiplexing_library_csv_url),
-            path(index_dir_path), 
-            path(pl_path), 
-            path(t2g_path)
-    
+        val chemistry 
+        val reference
+        val dataset_name 
+        val dataset_url 
+        val fastq_file 
+        val fastq_MD5sum 
+        val delete_fastq 
+        val feature_barcode_csv_url 
+        val multiplexing_library_csv_url
+        path index_dir_path
+        path pl_path
+        path t2g_path
+
     output:
         val chemistry, emit: chemistry
         val reference, emit: reference
         val dataset_name, emit: dataset_name
         val dataset_url, emit: dataset_url
-        val fastq_url, emit:fastq_url
+        val fastq_file, emit:fastq_file
         val fastq_MD5sum, emit: fastq_MD5sum
         val delete_fastq, emit: delete_fastq
         val feature_barcode_csv_url, emit: feature_barcode_csv_url
@@ -62,27 +120,55 @@ process download_fastq {
         path pl_path, emit: pl_path
         path t2g_path, emit: t2g_path
         path "${fastq_MD5sum}_fastqs", emit: fastq_dir_path
-
-    """
-        num_attempt=1
-        wget ${fastq_url} -P ${fastq_MD5sum}_cfastqs
-        while [ "\$(md5sum ${fastq_MD5sum}_cfastqs/\$(ls ${fastq_MD5sum}_cfastqs) | cut -d' ' -f1)" != "${fastq_MD5sum}" ]
-        do
-            if [[ \$num_attempt -gt 3 ]]
-            then
-                echo "Three attempts were made to fetch ${fastq_url.toString().lastIndexOf('/').with {fastq_url.toString().substring(it+1, fastq_url.toString().length())}}, but the MD5sum (\$(md5sum ${fastq_MD5sum}_cfastqs/\$(ls ${fastq_MD5sum}_cfastqs) | cut -d' ' -f1)) of the downloaded file \$(ls ${fastq_MD5sum}_cfastqs) didn't match the expected MD5sum ($fastq_MD5sum). Processing of this dataset will not proceed. Please check the MD5sum and internet connectivity."
-                exit 1
-            fi
-            let "num_attempt+=1"
-            rm -rf ${fastq_MD5sum}_cfastqs
-            wget ${fastq_url} -P ${fastq_MD5sum}_cfastqs
-        done
-        mkdir -p ${fastq_MD5sum}_fastqs
-        tar xf ${fastq_MD5sum}_cfastqs/\$(ls ${fastq_MD5sum}_cfastqs) --strip-components=1 -C ${fastq_MD5sum}_fastqs
-        rm -rf ${fastq_MD5sum}_cfastqs
-    """
-
-
+    
+    script:
+        fastq_file = fastq_file.toString()
+        abs_fastq = file("$fastq_file")
+        if(fastq_file.length() > 3 && fastq_file.substring(0,4).equals("http")) { //fastq is a URL
+            """
+                num_attempt=1
+                wget ${fastq_file} -P ${fastq_MD5sum}_cfastqs
+                while [ "\$(md5sum ${fastq_MD5sum}_cfastqs/\$(ls ${fastq_MD5sum}_cfastqs) | cut -d' ' -f1)" != "${fastq_MD5sum}" ]
+                do
+                    if [[ \$num_attempt -gt 3 ]]
+                    then
+                        echo "Three attempts were made to fetch ${fastq_file.toString().lastIndexOf('/').with {fastq_file.toString().substring(it+1, fastq_file.toString().length())}}, but the MD5sum (\$(md5sum ${fastq_MD5sum}_cfastqs/\$(ls ${fastq_MD5sum}_cfastqs) | cut -d' ' -f1)) of the downloaded file \$(ls ${fastq_MD5sum}_cfastqs) didn't match the expected MD5sum ($fastq_MD5sum). Processing of this dataset will not proceed. Please check the MD5sum and internet connectivity."
+                        exit 1
+                    fi
+                    let "num_attempt+=1"
+                    rm -rf ${fastq_MD5sum}_cfastqs
+                    wget ${fastq_file} -P ${fastq_MD5sum}_cfastqs
+                done
+                mkdir -p ${fastq_MD5sum}_fastqs
+                tar xf ${fastq_MD5sum}_cfastqs/\$(ls ${fastq_MD5sum}_cfastqs) --strip-components=1 -C ${fastq_MD5sum}_fastqs
+                rm -rf ${fastq_MD5sum}_cfastqs
+            """
+        } else if(abs_fastq.exists()) { //check that the fastq file exists locally
+            if (fastq_MD5sum.length() != 32) {
+                fastq_MD5sum = fastq_file.md5()
+            }
+            if(fastq_file.length () > 3 && fastq_file.contains(".tar") && fastq_file.contains(".gz")) {
+                """
+                mkdir ${fastq_MD5sum}_fastqs
+                tar -xzf ${fastq_file} --strip-components=1 -C ${fastq_MD5sum}_fastqs
+                """
+            } else if(fastq_file.length () > 3 && fastq_file.contains(".tar")) {
+                """
+                mkdir ${fastq_MD5sum}_fastqs
+                tar -xf ${fastq_file} --strip-components=1 -C ${fastq_MD5sum}_fastqs
+                """
+            } else if (fastq_file.length () > 3 && fastq_file.contains(".gz")) {
+                """
+                mkdir ${fastq_MD5sum}_fastqs
+                gunzip ${fastq_file} -c > ${fastq_MD5sum}_fastqs
+                """
+            } else {
+                """
+                mkdir ${fastq_MD5sum}_fastqs
+                cp -a ${fastq_file} ${fastq_MD5sum}_fastqs
+                """
+            }
+        }
 }
 
 process salmon_map_rad {
@@ -95,7 +181,7 @@ process salmon_map_rad {
         val reference
         val dataset_name
         val dataset_url
-        val fastq_url
+        val fastq_file
         val fastq_MD5sum
         val delete_fastq
         val feature_barcode_csv_url
@@ -110,7 +196,7 @@ process salmon_map_rad {
         val reference, emit: reference
         val dataset_name, emit: dataset_name
         val dataset_url, emit: dataset_url
-        val fastq_url, emit:fastq_url
+        val fastq_file, emit:fastq_file
         val fastq_MD5sum, emit: fastq_MD5sum
         val delete_fastq, emit: delete_fastq
         val feature_barcode_csv_url, emit: feature_barcode_csv_url

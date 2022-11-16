@@ -270,6 +270,10 @@ workflow af {
         | alevin_fry_collate \
         | alevin_fry_quant \
         | write_description
+
+    emit:
+        write_description.out
+
 }
 
 
