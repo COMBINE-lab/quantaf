@@ -1,3 +1,3 @@
 reference	link
-v2	https://raw.githubusercontent.com/10XGenomics/cellranger/master/lib/python/cellranger/barcodes/737K-august-2016.txt
-v3	https://raw.githubusercontent.com/10XGenomics/cellranger/master/lib/python/cellranger/barcodes/3M-february-2018.txt.gz
+v2	https://latch-public.s3.us-west-2.amazonaws.com/quantaf-inputs/737K-august-2016.txt
+v3	https://latch-public.s3.us-west-2.amazonaws.com/quantaf-inputs/3M-february-2018.txt.gz

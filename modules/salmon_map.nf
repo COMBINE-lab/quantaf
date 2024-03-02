@@ -1,28 +1,3 @@
-workflow salmon_map {
-    take: 
-        samp 
-
-    main: 
-        download_fastq(samp) | salmon_map_rad
-
-    emit:
-        salmon_map_rad.out.chemistry
-        salmon_map_rad.out.reference
-        salmon_map_rad.out.dataset_name
-        salmon_map_rad.out.dataset_url
-        salmon_map_rad.out.fastq_url
-        salmon_map_rad.out.fastq_MD5sum
-        salmon_map_rad.out.delete_fastq
-        salmon_map_rad.out.feature_barcode_csv_url
-        salmon_map_rad.out.multiplexing_library_csv_url
-        salmon_map_rad.out.pl_path
-        salmon_map_rad.out.t2g_path
-        salmon_map_rad.out.map_dir_path
-        salmon_map_rad.out.map_rad_path
-        salmon_map_rad.out.unmapped_file_path
-
-}
-
 /*
 * This process takes an input sample
 * as defined by the columns in the sample table csv
@@ -35,19 +10,19 @@ process download_fastq {
     label 'single_threads'
 
     input:
-        tuple val(chemistry), 
-            val(reference), 
-            val(dataset_name), 
-            val(dataset_url), 
-            val(fastq_url), 
-            val(fastq_MD5sum), 
-            val(delete_fastq), 
-            val(feature_barcode_csv_url), 
+        tuple val(chemistry),
+            val(reference),
+            val(dataset_name),
+            val(dataset_url),
+            val(fastq_url),
+            val(fastq_MD5sum),
+            val(delete_fastq),
+            val(feature_barcode_csv_url),
             val(multiplexing_library_csv_url),
-            path(index_dir_path), 
-            path(pl_path), 
+            path(index_dir_path),
+            path(pl_path),
             path(t2g_path)
-    
+
     output:
         val chemistry, emit: chemistry
         val reference, emit: reference
@@ -89,7 +64,7 @@ process salmon_map_rad {
     tag "salmon_map:${fastq_MD5sum}"
     label 'multi_threads'
     // conda "bioconda::salmon"
-    
+
     input:
         val chemistry
         val reference
@@ -134,7 +109,7 @@ process salmon_map_rad {
             -p ${task.cpus} \
             --${chemistry_salmon} \
             --sketch -o \
-            ${fastq_MD5sum}_alevin_map 
+            ${fastq_MD5sum}_alevin_map
 
             if [ ${delete_fastq != 0} ]; then rm -rf ${fastq_MD5sum}_fastqs; fi
         """
@@ -182,3 +157,27 @@ def salmon_chem_flag(chemistry) {
     }
 }
 
+
+workflow salmon_map {
+    take:
+        samp
+
+    main:
+        download_fastq(samp) | salmon_map_rad
+
+    emit:
+        chemistry = salmon_map_rad.out.chemistry
+        reference = salmon_map_rad.out.reference
+        dataset_name = salmon_map_rad.out.dataset_name
+        dataset_url = salmon_map_rad.out.dataset_url
+        fastq_url = salmon_map_rad.out.fastq_url
+        fastq_MD5sum = salmon_map_rad.out.fastq_MD5sum
+        delete_fastq = salmon_map_rad.out.delete_fastq
+        feature_barcode_csv_url = salmon_map_rad.out.feature_barcode_csv_url
+        multiplexing_library_csv_url = salmon_map_rad.out.multiplexing_library_csv_url
+        pl_path = salmon_map_rad.out.pl_path
+        t2g_path = salmon_map_rad.out.t2g_path
+        map_dir_path = salmon_map_rad.out.map_dir_path
+        map_rad_path = salmon_map_rad.out.map_rad_path
+        unmapped_file_path = salmon_map_rad.out.unmapped_file_path
+}

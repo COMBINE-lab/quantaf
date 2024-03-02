@@ -4,3 +4,7 @@ nextflow
 pipeline_trace*
 nf_pipeline
 work
+barcodes
+.latch
+spec
+**/__pycache__

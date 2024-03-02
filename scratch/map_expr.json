@@ -1,0 +1,32 @@
+{
+  "ExpressionStatement": {
+    "expression": {
+      "MethodCallExpression": {
+        "objectExpression": {
+          "VariableExpression": "this"
+        },
+        "method": "salmon_map_rad",
+        "arguments": {
+          "ArgumentListExpression": {
+            "expressions": [
+              {
+                "MethodCallExpression": {
+                  "objectExpression": {
+                    "VariableExpression": "Channel"
+                  },
+                  "method": "of",
+                  "arguments": {
+                    "ArgumentListExpression": {
+                      "expressions": []
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    "labels": []
+  }
+}

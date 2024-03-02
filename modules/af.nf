@@ -1,7 +1,7 @@
 import groovy.json.JsonOutput
 /*
-* This process takes the output produced by the 
-* `salmon_map_rad` rule and generates a permit list 
+* This process takes the output produced by the
+* `salmon_map_rad` rule and generates a permit list
 * with alevin-fry (currently using the knee method).
 */
 process alevin_fry_gpl {
@@ -50,7 +50,7 @@ process alevin_fry_gpl {
         """
         ${cmd}
         """
-    
+
     stub:
         filt_flag = (filt_type == "knee") ? "-k" : "-u ${pl_path}"
         cmd = """
@@ -67,8 +67,8 @@ process alevin_fry_gpl {
 }
 
 /*
-* This process takes the output produced by the 
-* `alevin_fry_gpl` rule and generates a collated 
+* This process takes the output produced by the
+* `alevin_fry_gpl` rule and generates a collated
 * RAD file.
 */
 process alevin_fry_collate {
@@ -111,7 +111,7 @@ process alevin_fry_collate {
     script:
         cmd = """
         $params.timecmd -v -o ${fastq_MD5sum}_logs_collate_${filt_type}.time alevin-fry collate \
-    -i ${permit_dir_path} -r ${map_dir_path} -t ${task.cpus} 
+    -i ${permit_dir_path} -r ${map_dir_path} -t ${task.cpus}
         """
 
         """
@@ -121,7 +121,7 @@ process alevin_fry_collate {
     stub:
     cmd = """
         $params.timecmd -v -o ${fastq_MD5sum}_logs_collate_${filt_type}.time alevin-fry collate \
-    -i ${permit_dir_path} -r ${map_dir_path} -t ${task.cpus} 
+    -i ${permit_dir_path} -r ${map_dir_path} -t ${task.cpus}
     """
 
     """
@@ -132,7 +132,7 @@ process alevin_fry_collate {
 }
 
 /*
-* This process takes the output produced by the 
+* This process takes the output produced by the
 * `alevin_fry_collate` rule and generates the resulting
 * quantification.
 */
@@ -142,7 +142,7 @@ process alevin_fry_quant {
     label 'multi_threads'
 
     publishDir "${params.output_dir}/alevin_fry", mode: 'copy'
-    
+
     input:
         val chemistry
         val reference
@@ -214,18 +214,18 @@ process write_description {
 
     output:
         path "dataset_description.json", emit: dataset_description
-    
+
     exec:
         // from here
         // https://groups.google.com/g/nextflow/c/tp_b1p0DBE4?pli=1
-        def json = JsonOutput.toJson(  [chemistry: "${chemistry}", 
-                                        reference: "${reference}", 
-                                        dataset_name: "${dataset_name}", 
-                                        dataset_url: "${dataset_url}", 
-                                        fastq_url: "${fastq_url}", 
-                                        fastq_MD5sum: "${fastq_MD5sum}", 
-                                        delete_fastq: "${delete_fastq}", 
-                                        feature_barcode_csv_url: "${feature_barcode_csv_url}", 
+        def json = JsonOutput.toJson(  [chemistry: "${chemistry}",
+                                        reference: "${reference}",
+                                        dataset_name: "${dataset_name}",
+                                        dataset_url: "${dataset_url}",
+                                        fastq_url: "${fastq_url}",
+                                        fastq_MD5sum: "${fastq_MD5sum}",
+                                        delete_fastq: "${delete_fastq}",
+                                        feature_barcode_csv_url: "${feature_barcode_csv_url}",
                                         multiplexing_library_csv_url: "${multiplexing_library_csv_url}"
                                         ]
                                     )
@@ -249,7 +249,6 @@ workflow af {
         map_dir_path
         map_rad_path
         unmapped_file_path
-        filt_type
 
     main:
         alevin_fry_gpl(
@@ -262,7 +261,7 @@ workflow af {
             delete_fastq,
             feature_barcode_csv_url,
             multiplexing_library_csv_url,
-            filt_type,
+            "unfilt",
             pl_path,
             t2g_path,
             map_dir_path
@@ -270,6 +269,9 @@ workflow af {
         | alevin_fry_collate \
         | alevin_fry_quant \
         | write_description
+
+    emit:
+        dataset_description = write_description.out.dataset_description
 }
 
 

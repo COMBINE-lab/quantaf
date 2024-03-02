@@ -5,9 +5,8 @@ include {preprocess} from './modules/preprocess'
 include {af} from './modules/af'
 
 workflow {
-
       data = Channel
-      .fromPath(params.input_sheets.sample)
+      .fromPath(params.sample)
       .splitCsv(header:true, sep: "\t", strip: true)
       .map{ row-> tuple(row.chemistry,
                         row.reference,
@@ -16,13 +15,13 @@ workflow {
                         row.fastq_url,
                         row.fastq_MD5sum,
                         row.delete_fastq,
-                        row.feature_barcode_csv_url, 
+                        row.feature_barcode_csv_url,
                         row.multiplexing_library_csv_url)
       }
 
-      
-      // run alevin-fry on the dataset 
-      // producing both the knee filtered and 
+
+      // run alevin-fry on the dataset
+      // producing both the knee filtered and
       // unfiltered output
       preprocess()
 
@@ -56,6 +55,6 @@ workflow {
                               it[0][1] // t2g_path
             ))
 
-      salmon_map(data) 
-      af(salmon_map.out, Channel.value("unfilt"))
+      salmon_map(data)
+      af(salmon_map.out)
 }

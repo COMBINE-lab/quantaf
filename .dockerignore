@@ -1,0 +1,6 @@
+barcodes
+.latch
+
+!.latch/bin
+!.latch/.nextflow
+!.latch/nf_entrypoint.py
