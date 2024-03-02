@@ -60,9 +60,6 @@ copy .latch/bin/nextflow /root/nextflow
 copy .latch/.nextflow /root/.nextflow
 copy .latch/nf_entrypoint.py /root/nf_entrypoint.py
 
-copy input_files/3M-february-2018.txt.gz /root/
-copy input_files/737K-august-2016.txt /root/
-
 # Latch workflow registration metadata
 # DO NOT CHANGE
 arg tag
